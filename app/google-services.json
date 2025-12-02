@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "193274973444",
+    "project_id": "fredmobile-29793",
+    "storage_bucket": "fredmobile-29793.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:193274973444:android:d4ec8c81e3f032a4e45451",
+        "android_client_info": {
+          "package_name": "com.example.fredmobile"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "193274973444-1q0rdlb37rt9r83u1a4ocauqvmms5uuj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAjVyDfGhrZtgN-gR3r0aL7sv6aTXX7l-A"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "193274973444-1q0rdlb37rt9r83u1a4ocauqvmms5uuj.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
