@@ -2,129 +2,134 @@
 
 ## Overview
 
-FRED (Field Ready Employee Dashboard) is an Android app prototype for field
-workers who need a simple way to check in/out of sites, report safety
-incidents, and review their activity history. The goal is to make day-to-day
-safety and attendance tasks easier to track on a mobile device.
+FRED Mobile is an Android application designed for field workers who need a simple
+and reliable way to:
+- Check in and out of work sites
+- Report safety incidents
+- View site information
+- Review their daily activity
+- Quickly see weather and environmental conditions
 
-This project is my final Android assignment for Mobile Application Development.
+The app focuses on clarity, ease of use, and mobile-first workflows. It is being
+developed as part of my final project for **Mobile Application Development**.
 
 ---
 
-## Application Description  
+## Application Description
 
-FRED Mobile (Field Ready Employee Dashboard) is designed for field workers who 
-need a simple and reliable way to check into job sites, report safety incidents, 
-and review their daily activity. The goal is to reduce missed check-ins, simplify 
-safety reporting, and give workers quick access to important site conditions such 
-as weather and upcoming hazards.
+FRED Mobile helps prevent missed check-ins, streamlines safety reporting, and
+gives field workers fast access to site conditions such as temperature, forecasts,
+and air quality.
 
-The app includes a clean home dashboard, a Check-In/Check-Out workflow, an 
-Incident Report form, a Site list, a History log, and a full Settings page. In 
-Milestone 1 all data is local, but later milestones will integrate live weather 
-APIs, Firebase authentication, and a real database.
+In Milestone 1, all data was local.  
+In Milestone 2, the app now integrates real weather data powered by the
+OpenWeatherMap API — including three live endpoints:
 
-FRED focuses on a clear UI, mobile-first usability, and accessibility to support 
-workers who may be on-site, underground, or in remote locations where fast and 
-simple interaction is essential.
+- **Current weather** (temperature, description)
+- **Short-term forecast** (next 3 hours)
+- **Air quality** (AQI)
+
+This information appears directly on the Check-In screen to help workers
+understand their environment before starting a shift.
+
+The design follows Material3 guidelines and prioritizes accessibility,
+clarity, and real-world usability for workers who may be on-site, underground,
+or in remote areas.
 
 ---
 
 ## Accessibility Review & Fix Plan
 
-I ran the Android Accessibility Scanner on all core screens (Auth, Home, Sites, Check-In, Incident, History, Settings). A few items were flagged, and a plan has been documented below:
+The Android Accessibility Scanner was run on all screens (Auth, Home, Sites,
+Check-In, Incident, History, Settings). A few minor issues were detected, and
+the planned fixes are listed below.
 
-### 1. Duplicate Item Descriptions (Switches)
-Scanner flagged multiple switches sharing the same speakable text (“Off”).  
+### 1. Duplicate item descriptions (Switches)
+Scanner flagged repeated speakable text such as “Off.”  
 **Fix (planned for M2/M3):**  
-Add unique content descriptions such as:
-- "Toggle notifications"
-- "Toggle dark mode"
-- "Toggle auto check-in"
+Add unique `contentDescription` values like:
+- “Toggle notifications”
+- “Toggle dark mode”
+- “Toggle auto check-in”
 
-### 2. Repeated “View details (coming soon)” Buttons
-All site cards have identical button text.  
+### 2. Repeated “View details” buttons on the Sites screen
+All site cards currently show the same placeholder text.  
 **Fix (planned):**  
 Replace with dynamic labels:
 - “View details for North River Plant”
 - “View details for West Substation”
 
-### 3. Repeated “Status: Completed” in History
-History cards repeat the same spoken description.  
+### 3. Repeated text descriptions in the History screen
+Items such as “Status: Completed” repeat without context.  
 **Fix (planned):**  
-Include more context like the site name or date in accessibility descriptions.
+Add descriptive text such as:
+- “Status completed for North River Plant, November 25”
 
-### 4. Text Contrast on Buttons
-Scanner suggested increasing contrast on certain light-colored buttons.  
+### 4. Text contrast warnings
+Scanner recommended stronger contrast for certain button text.  
 **Fix (planned):**  
-Use Material3 `onPrimary` / `onSurface` colors to meet WCAG AA contrast.
-
-### Summary
-Most issues were minor and expected for placeholder UI.  
-Fixes will be addressed as real dynamic data and site-specific screens are added in Milestones 2 and 3.
-
+Use Material3 semantic colors (`onPrimary`, `onSurface`) to meet WCAG AA.
 
 ---
 
-## Current Features – Milestone 1 (UI)
+## Current Features – Milestone 2
 
-- **Home dashboard**
-    - Quick access to Check-In, Incident Report, Sites, History, and Settings.
+### Home Dashboard
+- Navigation to Check-In, Sites, Incident Report, History, and Settings
+- Clean Material3 layout with modern card design
 
-- **Sites screen**
-    - List of sample work sites shown as Material3 cards.
-    - Each site displays name, address, and coordinates.
-    - Designed to later show weather and site details.
+### Check-In Screen
+- Shows current site (name, address, coordinates)
+- Local check-in / check-out state
+- Integrated real-time weather information:
+  - **Current temperature + conditions**
+  - **Next 3-hour forecast**
+  - **Air Quality Index (AQI)**
+- Uses all three required PM2 API endpoints
 
-- **Check-In screen**
-    - Shows a “current site” card and status (checked in / not checked in).
-    - Large Check In / Check Out buttons.
-    - Weather preview section (currently using sample text, will call a real API in Milestone 2).
+### Incident Report Screen
+- Severity selector (Low, Medium, High)
+- Description text field
+- Optional “Include photo” placeholder
+- Snackbar confirmation on submit
 
-- **Incident Report screen**
-    - Form with severity selector, description field, optional photo checkbox,
-    - and a submit button with snackbar feedback.
-    - For now the data is local only (no database yet).
+### Sites Screen
+- List of sample work sites (from Milestone 1)
+- Each card includes name, address, and coordinates
+- “View details” placeholder (to be expanded in Milestone 3)
 
-- **History screen**
-    - Two tabs: Check-ins and Incidents.
-    - Each tab shows sample history entries using card lists.
-    - Will later be backed by Firestore or Room.
+### History Screen
+- Two tabs: **Check-ins** and **Incidents**
+- Preloaded sample data
+- Will later load from Firestore
 
-- **Settings screen**
-    - Toggles for notifications, dark mode, and “auto check-in” (placeholder).
-    - Dropdown for choosing weather units (Celsius / Fahrenheit).
-    - For Milestone 1 all settings are stored in local state only.
+### Settings Screen
+- Toggles for notifications, dark mode, auto check-in
+- Weather unit dropdown (Celsius/Fahrenheit)
+- Placeholder location for sign-out button (Milestone 3)
+- Local-only persistence in PM1 and PM2
 
 ---
 
 ## Planned Features
 
-### Milestone 2 – API Integration (Weather)
+### Milestone 3 – Authentication & Database
 
-Planned external endpoints (likely from a weather API such as OpenWeatherMap):
+### Firebase Authentication
+- Email/password login
+- Second login method (Google or GitHub)
 
-1. **Current weather for a site** (by latitude/longitude)
-2. **Short-term forecast** for the site (next hours / days)
-3. **Weather alerts** for the area
-4. **Air quality index (AQI)** at the site
+### Database Persistence (Firestore or Room)
+- Store sites
+- Store check-ins
+- Store incident reports
+- Store user data
+- Full CRUD support
 
-These will be displayed on the Check-In screen and Site/Weather views to help
-workers understand safety conditions before and during a shift.
-
-### Milestone 3 – Data Persistence & Authentication
-
-- **Firebase Authentication**
-    - Email/password sign-in.
-    - Second sign-in method (e.g., Google or GitHub).
-
-- **Database persistence**
-    - Store users, sites, check-ins, and incidents in Firestore and/or Room.
-    - Support full CRUD where appropriate (create, read, update, delete).
-
-- **Settings persistence**
-    - Save user preferences (notifications, dark mode, weather units) using
-      DataStore.
+### Settings Persistence (Jetpack DataStore)
+- Dark mode preference
+- Notification settings
+- Weather unit selection
 
 ---
 
@@ -132,19 +137,21 @@ workers understand safety conditions before and during a shift.
 
 - **Language:** Kotlin
 - **UI:** Jetpack Compose + Material3
+- **Architecture:** Single Activity, ViewModel, State Hoisting
+- **Networking:** Retrofit + Coroutines
+- **Backend:** OpenWeatherMap API (current, forecast, AQI)
 - **Navigation:** Navigation Compose
-- **Architecture:** Single-activity with composable screens and simple ViewModels
-- **Backend (planned):** Firebase Auth, Firestore, REST weather API
 
 ---
 
 ## How to Run
 
 1. Clone the repository.
-2. Open the project in Android Studio (Giraffe or newer).
-3. Sync Gradle to download dependencies.
-4. Run the `app` module on an emulator or physical device (API 24+).
+2. Open the project in **Android Studio Giraffe or newer**.
+3. Sync Gradle.
+4. Add your `apikey` inside the `WeatherRepository`.
+5. Run the **app** module on an emulator or physical device (API 24+).
 
-For future milestones, additional setup (Firebase `google-services.json`, API keys)
-will be noted here.
+Firebase setup instructions will be added when Milestone 3 development begins.
 
+---

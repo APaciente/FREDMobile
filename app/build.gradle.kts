@@ -66,6 +66,9 @@ dependencies {
     // Navigation for Compose
     implementation(libs.androidx.navigation.compose)
 
+    // Retrofit for API calls
+    implementation(libs.retrofit)
+    implementation(libs.converter.gson)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
