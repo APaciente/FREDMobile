@@ -1,12 +1,12 @@
 package com.example.fredmobile.ui
 
 import androidx.compose.runtime.Composable
-import androidx.navigation.NavHostController
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.fredmobile.auth.AuthViewModel
+import com.example.fredmobile.ui.navigation.Routes
 import com.example.fredmobile.ui.screens.AuthScreen
 import com.example.fredmobile.ui.screens.CheckInScreen
 import com.example.fredmobile.ui.screens.HistoryScreen
@@ -16,58 +16,53 @@ import com.example.fredmobile.ui.screens.SettingsScreen
 import com.example.fredmobile.ui.screens.SitesScreen
 
 /**
- * Central list of route names used by the navigation graph.
- * Keeping routes in one place makes it easier to refactor later.
- */
-object Routes {
-    const val AUTH = "auth"
-    const val HOME = "home"
-    const val SITES = "sites"
-    const val CHECK_IN = "check_in"
-    const val INCIDENT = "incident"
-    const val HISTORY = "history"
-    const val SETTINGS = "settings"
-}
-
-/**
- * Top-level navigation graph for FRED.
+ * Top-level navigation graph for the FRED mobile app.
  *
- * Defines all high-level routes (home, sites, check-in, incidents, history,
- * settings). Milestone 1 uses only these screens with mock data. In later
- * milestones we will extend this to include authentication flows and
- * detail screens (site details, incident details, etc.).
+ * Milestone 1:
+ *  - Handles navigation between core screens.
+ *
+ * Milestone 3:
+ *  - Integrates authentication flow:
+ *      - Starts at [Routes.AUTH]
+ *      - Navigates to [Routes.HOME] after sign-in
+ *      - Settings screen can trigger sign-out and return to [Routes.AUTH]
  */
 @Composable
-fun AppNavHost(
-    navController: NavHostController = rememberNavController(),
-    authViewModel: AuthViewModel = viewModel()
-) {
-    val startDestination = if (authViewModel.isLoggedIn) {
-        Routes.HOME
-    } else {
-        Routes.AUTH
-    }
+fun AppNavHost() {
+    val navController = rememberNavController()
+    val authViewModel: AuthViewModel = viewModel()
 
     NavHost(
         navController = navController,
-        startDestination = startDestination
+        startDestination = Routes.AUTH
     ) {
         composable(Routes.AUTH) {
             AuthScreen(
-                onAuthSuccess = {
-                    navController.navigate(Routes.HOME) {
-                        popUpTo(Routes.AUTH) { inclusive = true }
-                    }
-                },
-                viewModel = authViewModel
+                navController = navController,
+                authViewModel = authViewModel
             )
         }
 
-        composable(Routes.HOME) { HomeScreen(navController) }
-        composable(Routes.SITES) { SitesScreen(navController) }
-        composable(Routes.CHECK_IN) { CheckInScreen(navController) }
-        composable(Routes.INCIDENT) { IncidentScreen(navController) }
-        composable(Routes.HISTORY) { HistoryScreen(navController) }
+        composable(Routes.HOME) {
+            HomeScreen(navController = navController)
+        }
+
+        composable(Routes.SITES) {
+            SitesScreen(navController = navController)
+        }
+
+        composable(Routes.CHECKIN) {
+            CheckInScreen(navController = navController)
+        }
+
+        composable(Routes.INCIDENT) {
+            IncidentScreen(navController = navController)
+        }
+
+        composable(Routes.HISTORY) {
+            HistoryScreen(navController = navController)
+        }
+
         composable(Routes.SETTINGS) {
             SettingsScreen(
                 navController = navController,
@@ -79,6 +74,5 @@ fun AppNavHost(
                 }
             )
         }
-
     }
 }

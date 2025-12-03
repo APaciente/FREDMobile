@@ -8,7 +8,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
-import com.example.fredmobile.ui.Routes
+import com.example.fredmobile.ui.navigation.Routes
 
 /**
  * Home dashboard screen for FRED.
@@ -47,7 +47,7 @@ fun HomeScreen(navController: NavController) {
             // QUICK ACTIONS
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Button(
-                    onClick = { navController.navigate(Routes.CHECK_IN) },
+                    onClick = { navController.navigate(Routes.CHECKIN) },
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {

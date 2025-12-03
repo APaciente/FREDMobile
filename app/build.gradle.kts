@@ -55,6 +55,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 
+    // Google Sign-In
+    implementation(libs.play.services.auth)
+
     // Coroutines for async work (Firebase, DB, etc.)
     implementation(libs.kotlinx.coroutines.android)
 
@@ -69,6 +72,9 @@ dependencies {
     // Retrofit for API calls
     implementation(libs.retrofit)
     implementation(libs.converter.gson)
+    implementation(libs.androidx.credentials)
+    implementation(libs.androidx.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

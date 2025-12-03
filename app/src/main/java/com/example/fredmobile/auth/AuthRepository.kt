@@ -1,35 +1,52 @@
 package com.example.fredmobile.auth
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.FirebaseUser
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.tasks.await
 
 /**
- * Small wrapper around FirebaseAuth.
- * ViewModels use this instead of calling Firebase directly.
+ * Thin wrapper around FirebaseAuth.
+ * Provides suspend functions for email + Google sign-in.
  */
+data class AuthUser(
+    val uid: String,
+    val email: String?,
+    val displayName: String?
+)
+
 class AuthRepository(
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
 
-    val currentUser get() = firebaseAuth.currentUser
+    fun currentUser(): AuthUser? = auth.currentUser?.toAuthUser()
 
-    suspend fun signIn(email: String, password: String): Result<Unit> =
-        try {
-            firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun signInWithEmail(email: String, password: String): AuthUser? {
+        val result = auth.signInWithEmailAndPassword(email, password).await()
+        return result.user?.toAuthUser()
+    }
 
-    suspend fun signUp(email: String, password: String): Result<Unit> =
-        try {
-            firebaseAuth.createUserWithEmailAndPassword(email, password).await()
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
+    suspend fun registerWithEmail(email: String, password: String): AuthUser? {
+        val result = auth.createUserWithEmailAndPassword(email, password).await()
+        return result.user?.toAuthUser()
+    }
+
+    /**
+     * Sign in using the ID token returned from Google Sign-In.
+     */
+    suspend fun signInWithGoogle(idToken: String): AuthUser? {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        val result = auth.signInWithCredential(credential).await()
+        return result.user?.toAuthUser()
+    }
 
     fun signOut() {
-        firebaseAuth.signOut()
+        auth.signOut()
     }
+
+    private fun FirebaseUser.toAuthUser() = AuthUser(
+        uid = uid,
+        email = email,
+        displayName = displayName
+    )
 }

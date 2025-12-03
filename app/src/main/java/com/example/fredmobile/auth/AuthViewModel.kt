@@ -1,78 +1,133 @@
 package com.example.fredmobile.auth
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
 /**
- * Holds UI state for the authentication screen and talks to [AuthRepository].
+ * ViewModel that manages sign-in / sign-up / sign-out state.
+ *
+ * Milestone 3:
+ *  - Email/password sign-in
+ *  - Google sign-in (via ID token)
+ *  - Exposes a simple AuthUiState for the composable AuthScreen.
  */
-data class AuthUiState(
-    val email: String = "",
-    val password: String = "",
-    val isLoading: Boolean = false,
-    val errorMessage: String? = null,
-    val isLoginMode: Boolean = true  // true = login, false = register
-)
-
 class AuthViewModel(
     private val repo: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(AuthUiState())
-    val uiState: StateFlow<AuthUiState> = _uiState
+    var uiState = mutableStateOf(AuthUiState())
+        private set
 
-    val isLoggedIn: Boolean
-        get() = repo.currentUser != null
-
-    fun onEmailChange(newEmail: String) {
-        _uiState.value = _uiState.value.copy(email = newEmail, errorMessage = null)
-    }
-
-    fun onPasswordChange(newPassword: String) {
-        _uiState.value = _uiState.value.copy(password = newPassword, errorMessage = null)
-    }
-
-    fun toggleMode() {
-        _uiState.value = _uiState.value.copy(
-            isLoginMode = !_uiState.value.isLoginMode,
-            errorMessage = null
+    init {
+        // If a user is already signed in, expose them to the UI
+        uiState.value = uiState.value.copy(
+            currentUser = repo.currentUser()
         )
     }
 
-    fun submit(onSuccess: () -> Unit) {
-        val state = _uiState.value
+    fun onEmailChange(newEmail: String) {
+        uiState.value = uiState.value.copy(email = newEmail, errorMessage = null)
+    }
 
-        if (state.email.isBlank() || state.password.isBlank()) {
-            _uiState.value = state.copy(errorMessage = "Email and password are required.")
+    fun onPasswordChange(newPassword: String) {
+        uiState.value = uiState.value.copy(password = newPassword, errorMessage = null)
+    }
+
+    fun signInWithEmail() {
+        val email = uiState.value.email.trim()
+        val password = uiState.value.password
+
+        if (email.isBlank() || password.isBlank()) {
+            uiState.value = uiState.value.copy(
+                errorMessage = "Email and password are required."
+            )
             return
         }
 
-        _uiState.value = state.copy(isLoading = true, errorMessage = null)
+        uiState.value = uiState.value.copy(isLoading = true, errorMessage = null)
 
         viewModelScope.launch {
-            val result = if (state.isLoginMode) {
-                repo.signIn(state.email, state.password)
-            } else {
-                repo.signUp(state.email, state.password)
-            }
-
-            _uiState.value = _uiState.value.copy(isLoading = false)
-
-            result.onSuccess {
-                onSuccess()
-            }.onFailure { e ->
-                _uiState.value = _uiState.value.copy(
-                    errorMessage = e.message ?: "Authentication failed."
+            try {
+                val user = repo.signInWithEmail(email, password)
+                uiState.value = uiState.value.copy(
+                    isLoading = false,
+                    currentUser = user
+                )
+            } catch (e: Exception) {
+                uiState.value = uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Sign-in failed."
                 )
             }
         }
     }
 
+    fun registerWithEmail() {
+        val email = uiState.value.email.trim()
+        val password = uiState.value.password
+
+        if (email.isBlank() || password.isBlank()) {
+            uiState.value = uiState.value.copy(
+                errorMessage = "Email and password are required."
+            )
+            return
+        }
+
+        uiState.value = uiState.value.copy(isLoading = true, errorMessage = null)
+
+        viewModelScope.launch {
+            try {
+                val user = repo.registerWithEmail(email, password)
+                uiState.value = uiState.value.copy(
+                    isLoading = false,
+                    currentUser = user
+                )
+            } catch (e: Exception) {
+                uiState.value = uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Registration failed."
+                )
+            }
+        }
+    }
+
+    /**
+     * Called from the UI when Google Sign-In returns an ID token.
+     */
+    fun handleGoogleIdToken(idToken: String) {
+        uiState.value = uiState.value.copy(isLoading = true, errorMessage = null)
+
+        viewModelScope.launch {
+            try {
+                val user = repo.signInWithGoogle(idToken)
+                uiState.value = uiState.value.copy(
+                    isLoading = false,
+                    currentUser = user
+                )
+            } catch (e: Exception) {
+                uiState.value = uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Google sign-in failed."
+                )
+            }
+        }
+    }
+
+    fun setGoogleError(message: String) {
+        uiState.value = uiState.value.copy(
+            isLoading = false,
+            errorMessage = message
+        )
+    }
+
     fun signOut() {
         repo.signOut()
-        _uiState.value = AuthUiState()  // reset fields
+        uiState.value = uiState.value.copy(
+            currentUser = null,
+            email = "",
+            password = ""
+        )
     }
 }

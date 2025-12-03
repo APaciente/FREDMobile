@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">FREDMobile</string>
+
+    <!-- Web client ID for Google Sign-In -->
+    <string name="default_web_client_id">
+        193274973444-1q0rdlb37rt9r83u1a4ocauvqmms5uuj.apps.googleusercontent.com
+    </string>
 </resources>

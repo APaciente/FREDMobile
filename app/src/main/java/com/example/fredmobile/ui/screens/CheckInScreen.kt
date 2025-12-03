@@ -179,58 +179,50 @@ fun WeatherSummaryCard(state: WeatherUiState) {
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+
             Text(
                 text = "Weather at this site",
                 style = MaterialTheme.typography.titleMedium
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
             when {
                 state.isLoading -> {
-                    Text(
-                        text = "Loading latest weather…",
-                        style = MaterialTheme.typography.bodySmall
-                    )
+                    Text("Loading weather…", color = MaterialTheme.colorScheme.primary)
                 }
 
                 state.errorMessage != null -> {
                     Text(
-                        text = state.errorMessage,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        text = state.errorMessage ?: "Error",
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
 
                 else -> {
-                    val tempText = state.temperature?.let { "${it.toInt()}°" } ?: "--°"
-                    val descText = state.description ?: "No weather description"
-
-                    // Current conditions
+                    // --- Current weather ---
                     Text(
-                        text = "$tempText • $descText",
+                        text = "${state.temperature?.toInt()}° • ${state.description}",
                         style = MaterialTheme.typography.bodyMedium
                     )
 
-                    // Next forecast step (if available)
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // --- Next forecast window ---
                     if (state.nextTemp != null && state.nextDescription != null) {
                         Text(
-                            text = "Next: ${state.nextTemp.toInt()}° • ${state.nextDescription}",
+                            text = "Next: ${state.nextTemp?.toInt()}° • ${state.nextDescription}",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
 
-                    // AQI
+                    Spacer(modifier = Modifier.height(4.dp))
+
+                    // --- AQI ---
                     if (state.aqi != null) {
                         Text(
                             text = "Air quality index: ${state.aqi}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    } else {
-                        Text(
-                            text = "Air quality: no data",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -239,4 +231,5 @@ fun WeatherSummaryCard(state: WeatherUiState) {
         }
     }
 }
+
 
