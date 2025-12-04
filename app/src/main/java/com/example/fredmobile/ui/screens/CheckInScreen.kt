@@ -6,33 +6,47 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fredmobile.model.Site
+import com.example.fredmobile.ui.checkin.CheckInViewModel
+import com.example.fredmobile.ui.settings.SettingsViewModel
+import com.example.fredmobile.ui.settings.SettingsViewModelFactory
 import com.example.fredmobile.ui.weather.WeatherUiState
 import com.example.fredmobile.ui.weather.WeatherViewModel
+import com.example.fredmobile.util.toOpenWeatherUnits
+import com.example.fredmobile.util.toTemperatureSuffix
 
 /**
  * Screen for checking in and out of the current work site.
  *
- * Milestone 1:
- *  - Uses fake site data and local in-memory check-in state.
- *
- * Milestone 2:
- *  - Calls the weather API via [WeatherViewModel] to show
- *    current weather and air quality for the active site.
- *
- * Later milestones will connect this to location, geofencing,
- * and persistent database records.
+ * PM1: fake state only.
+ * PM2: shows real weather data via [WeatherViewModel].
+ * PM3: persists check-ins to Firestore via [CheckInViewModel] and uses
+ *      Settings (DataStore) for weather units.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckInScreen(
     navController: NavController,
+    checkInViewModel: CheckInViewModel = viewModel(),
     weatherViewModel: WeatherViewModel = viewModel()
 ) {
-    // Fake "current site" for PM1/PM2
+    val context = LocalContext.current
+
+    // SettingsViewModel for weather unit preference
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = SettingsViewModelFactory(context)
+    )
+    val settingsUiState by settingsViewModel.uiState.collectAsState()
+    val weatherUnitPref = settingsUiState.settings.weatherUnit
+    val tempSuffix = weatherUnitPref.toTemperatureSuffix()
+
+    // Fake "current site" for now – later this could come from Firestore or location
     val currentSite = remember {
         Site(
             id = "site1",
@@ -43,25 +57,31 @@ fun CheckInScreen(
         )
     }
 
-    // Simple in-memory status for PM1 only
-    var isCheckedIn by remember { mutableStateOf(false) }
-    var lastActionText by remember { mutableStateOf("Not checked in yet today.") }
-
-    // ----- Weather state -----
+    val checkInState = checkInViewModel.uiState
     val weatherState = weatherViewModel.uiState
 
-    // Load weather once when this screen appears (or when site changes)
-    LaunchedEffect(currentSite.id) {
+    // Load weather when the site or unit preference changes
+    LaunchedEffect(currentSite.id, weatherUnitPref) {
+        val units = weatherUnitPref.toOpenWeatherUnits()
         weatherViewModel.loadWeatherForSite(
             lat = currentSite.latitude,
-            lon = currentSite.longitude
+            lon = currentSite.longitude,
+            units = units
         )
     }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Check In / Out") }
+                title = { Text("Check In / Out") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -104,12 +124,12 @@ fun CheckInScreen(
                 }
             }
 
-            // STATUS CARD
+            // STATUS CARD (now backed by Firestore state)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isCheckedIn)
+                    containerColor = if (checkInState.isCheckedIn)
                         MaterialTheme.colorScheme.primaryContainer
                     else
                         MaterialTheme.colorScheme.surfaceVariant
@@ -119,19 +139,33 @@ fun CheckInScreen(
                     modifier = Modifier.padding(16.dp)
                 ) {
                     Text(
-                        text = if (isCheckedIn) "Status: Checked In" else "Status: Not Checked In",
+                        text = if (checkInState.isCheckedIn)
+                            "Status: Checked In"
+                        else
+                            "Status: Not Checked In",
                         style = MaterialTheme.typography.titleMedium
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = lastActionText,
+                        text = checkInState.statusText,
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (checkInState.errorMessage != null) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = checkInState.errorMessage,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
 
-            // WEATHER CARD (real API via WeatherViewModel)
-            WeatherSummaryCard(state = weatherState)
+            // WEATHER PREVIEW CARD
+            WeatherCard(
+                weatherState = weatherState,
+                tempSuffix = tempSuffix
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -143,22 +177,21 @@ fun CheckInScreen(
             ) {
                 Button(
                     onClick = {
-                        isCheckedIn = true
-                        lastActionText = "Checked in just now (sample for PM1)."
+                        checkInViewModel.checkIn(
+                            siteId = currentSite.id,
+                            siteName = currentSite.name
+                        )
                     },
                     modifier = Modifier.weight(1f),
-                    enabled = !isCheckedIn
+                    enabled = !checkInState.isCheckedIn && !checkInState.isLoading
                 ) {
                     Text("Check In")
                 }
 
                 OutlinedButton(
-                    onClick = {
-                        isCheckedIn = false
-                        lastActionText = "Checked out just now (sample for PM1)."
-                    },
+                    onClick = { checkInViewModel.checkOut() },
                     modifier = Modifier.weight(1f),
-                    enabled = isCheckedIn
+                    enabled = checkInState.isCheckedIn && !checkInState.isLoading
                 ) {
                     Text("Check Out")
                 }
@@ -168,68 +201,48 @@ fun CheckInScreen(
 }
 
 /**
- * Card that summarizes current weather and air quality for the site.
- *
- * Uses [WeatherUiState] so it can show loading, error, or data
- * without the CheckInScreen needing to know the API details.
+ * Simple card that shows current weather + AQI from [WeatherUiState].
  */
 @Composable
-fun WeatherSummaryCard(state: WeatherUiState) {
+private fun WeatherCard(
+    weatherState: WeatherUiState,
+    tempSuffix: String
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
             Text(
                 text = "Weather at this site",
                 style = MaterialTheme.typography.titleMedium
             )
-
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
             when {
-                state.isLoading -> {
-                    Text("Loading weather…", color = MaterialTheme.colorScheme.primary)
+                weatherState.isLoading -> {
+                    Text("Loading weather…", style = MaterialTheme.typography.bodySmall)
                 }
-
-                state.errorMessage != null -> {
+                weatherState.errorMessage != null -> {
                     Text(
-                        text = state.errorMessage ?: "Error",
+                        text = weatherState.errorMessage ?: "Weather not available.",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error
                     )
                 }
-
                 else -> {
-                    // --- Current weather ---
                     Text(
-                        text = "${state.temperature?.toInt()}° • ${state.description}",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "${weatherState.temperature?.toInt()}$tempSuffix • ${weatherState.description ?: ""}",
+                        style = MaterialTheme.typography.bodySmall
                     )
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // --- Next forecast window ---
-                    if (state.nextTemp != null && state.nextDescription != null) {
-                        Text(
-                            text = "Next: ${state.nextTemp?.toInt()}° • ${state.nextDescription}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // --- AQI ---
-                    if (state.aqi != null) {
-                        Text(
-                            text = "Air quality index: ${state.aqi}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
+                    Text(
+                        text = "Air quality index: ${weatherState.aqi ?: "–"}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
                 }
             }
         }
     }
 }
-
-

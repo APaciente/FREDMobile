@@ -17,6 +17,9 @@ import kotlinx.coroutines.launch
  *      1) Current weather
  *      2) Forecast
  *      3) Air quality (AQI)
+ *
+ * Milestone 3:
+ *  - Supports units ("metric" or "imperial") based on Settings.
  */
 class WeatherViewModel(
     private val repo: WeatherRepository = WeatherRepository()
@@ -25,19 +28,19 @@ class WeatherViewModel(
     var uiState by mutableStateOf(WeatherUiState())
         private set
 
-    fun loadWeatherForSite(lat: Double, lon: Double) {
+    fun loadWeatherForSite(lat: Double, lon: Double, units: String) {
         uiState = uiState.copy(isLoading = true, errorMessage = null)
 
         viewModelScope.launch {
             try {
                 // 1) Current weather
-                val current = repo.getCurrentWeather(lat, lon)
+                val current = repo.getCurrentWeather(lat, lon, units)
 
                 // 2) Air quality
                 val air = repo.getAirQuality(lat, lon)
 
                 // 3) Forecast (next few hours)
-                val forecast = repo.getForecast(lat, lon)
+                val forecast = repo.getForecast(lat, lon, units)
 
                 val temp = current.main.temp
                 val desc = current.weather.firstOrNull()

@@ -60,6 +60,7 @@ dependencies {
 
     // Coroutines for async work (Firebase, DB, etc.)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.coroutines.play.services)
 
     // Firebase: use BoM so all Firebase libs match versions
     implementation(platform(libs.firebase.bom))
@@ -75,6 +76,8 @@ dependencies {
     implementation(libs.androidx.credentials)
     implementation(libs.androidx.credentials.play.services.auth)
     implementation(libs.googleid)
+
+    implementation(libs.androidx.datastore.preferences)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

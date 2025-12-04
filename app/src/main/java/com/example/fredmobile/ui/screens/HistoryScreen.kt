@@ -3,29 +3,47 @@ package com.example.fredmobile.ui.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.fredmobile.model.firestore.CheckIn
+import com.example.fredmobile.model.firestore.Incident
+import com.example.fredmobile.ui.history.HistoryViewModel
+import com.example.fredmobile.util.toReadableString
+
 
 /**
  * History screen showing past check-ins and incidents.
- * For Milestone 1 we display static sample data.
- * Later milestones will load this from Firestore / Room.
+ *
+ * PM1: used fake in-memory data.
+ * PM3: now backed by Firestore via [HistoryViewModel].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun HistoryScreen(navController: NavController) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-
-    val tabs = listOf("Check-ins", "Incidents")
+fun HistoryScreen(
+    navController: NavController,
+    historyViewModel: HistoryViewModel = viewModel()
+) {
+    val uiState = historyViewModel.uiState
+    var selectedTab by remember { mutableStateOf(0) } // 0 = Check-ins, 1 = Incidents
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("History") }
+                title = { Text("History") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
             )
         }
     ) { innerPadding ->
@@ -36,168 +54,150 @@ fun HistoryScreen(navController: NavController) {
                 .fillMaxSize()
         ) {
 
-            Text(
-                text = "Review your recent activity.",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            // Tabs
+            TabRow(selectedTabIndex = selectedTab) {
+                Tab(
+                    selected = selectedTab == 0,
+                    onClick = { selectedTab = 0 },
+                    text = { Text("Check-ins") }
+                )
+                Tab(
+                    selected = selectedTab == 1,
+                    onClick = { selectedTab = 1 },
+                    text = { Text("Incidents") }
+                )
+            }
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Tabs
-            TabRow(
-                selectedTabIndex = selectedTabIndex
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(title) }
+            if (uiState.isLoading) {
+                CircularProgressIndicator()
+            } else if (uiState.errorMessage != null) {
+                Text(
+                    text = uiState.errorMessage,
+                    color = MaterialTheme.colorScheme.error
+                )
+            } else {
+                if (selectedTab == 0) {
+                    CheckInHistoryList(
+                        checkIns = uiState.checkIns,
+                        onDelete = { id -> historyViewModel.deleteCheckIn(id) }
+                    )
+                } else {
+                    IncidentHistoryList(
+                        incidents = uiState.incidents,
+                        onDelete = { id -> historyViewModel.deleteIncident(id) }
                     )
                 }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Content under tabs
-            when (selectedTabIndex) {
-                0 -> CheckInHistoryList(sampleCheckins)
-                1 -> IncidentHistoryList(sampleIncidents)
             }
         }
     }
 }
 
-/**
- * List of previous check-ins.
- */
 @Composable
-private fun CheckInHistoryList(entries: List<CheckInHistoryEntry>) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(entries) { entry ->
+private fun CheckInHistoryList(
+    checkIns: List<CheckIn>,
+    onDelete: (String) -> Unit
+) {
+    if (checkIns.isEmpty()) {
+        Text("No check-ins yet.")
+        return
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(checkIns, key = { it.id }) { item ->
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = entry.siteName,
+                        text = item.siteName,
                         style = MaterialTheme.typography.titleMedium
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Date: ${entry.date}",
+                        text = "Status: ${item.status}",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        text = "In: ${entry.checkInTime}, Out: ${entry.checkOutTime}",
+                        text = "In: ${item.inTime.toReadableString()}",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        text = "Status: ${entry.status}",
+                        text = "Out: ${item.outTime.toReadableString()}",
                         style = MaterialTheme.typography.bodySmall
                     )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Tap delete to remove this record.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        TextButton(onClick = { onDelete(item.id) }) {
+                            Text("Delete")
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-/**
- * List of previous incident reports.
- */
 @Composable
-private fun IncidentHistoryList(entries: List<IncidentHistoryEntry>) {
-    LazyColumn(
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.fillMaxSize()
-    ) {
-        items(entries) { entry ->
+private fun IncidentHistoryList(
+    incidents: List<Incident>,
+    onDelete: (String) -> Unit
+) {
+    if (incidents.isEmpty()) {
+        Text("No incidents reported yet.")
+        return
+    }
+
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        items(incidents, key = { it.id }) { incident ->
             Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
+                Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "${entry.siteName} – ${entry.severity} incident",
+                        text = incident.siteName,
                         style = MaterialTheme.typography.titleMedium
                     )
+                    Spacer(modifier = Modifier.height(4.dp))
                     Text(
-                        text = "Date: ${entry.date}",
+                        text = "Severity: ${incident.severity}",
                         style = MaterialTheme.typography.bodySmall
                     )
                     Text(
-                        text = "Summary: ${entry.summary}",
-                        style = MaterialTheme.typography.bodySmall)
+                        text = incident.description,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Text(
+                        text = "Reported: ${incident.createdAt.toReadableString()}",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Tap delete to remove this incident.",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        TextButton(onClick = { onDelete(incident.id) }) {
+                            Text("Delete")
+                        }
+                    }
                 }
             }
         }
     }
 }
-
-/**
- * Simple models + sample data for Milestone 1.
- * Later we will replace these with data from the database.
- */
-private data class CheckInHistoryEntry(
-    val siteName: String,
-    val date: String,
-    val checkInTime: String,
-    val checkOutTime: String,
-    val status: String
-)
-
-private data class IncidentHistoryEntry(
-    val siteName: String,
-    val date: String,
-    val severity: String,
-    val summary: String
-)
-
-private val sampleCheckins = listOf(
-    CheckInHistoryEntry(
-        siteName = "North River Plant",
-        date = "2025-11-25",
-        checkInTime = "08:15",
-        checkOutTime = "16:30",
-        status = "Completed"
-    ),
-    CheckInHistoryEntry(
-        siteName = "West Substation",
-        date = "2025-11-24",
-        checkInTime = "09:05",
-        checkOutTime = "15:50",
-        status = "Completed"
-    ),
-    CheckInHistoryEntry(
-        siteName = "Downtown Office",
-        date = "2025-11-23",
-        checkInTime = "08:45",
-        checkOutTime = "12:00",
-        status = "Left early (training)"
-    )
-)
-
-private val sampleIncidents = listOf(
-    IncidentHistoryEntry(
-        siteName = "North River Plant",
-        date = "2025-11-20",
-        severity = "Medium",
-        summary = "Minor slip near loading dock. No injury."
-    ),
-    IncidentHistoryEntry(
-        siteName = "West Substation",
-        date = "2025-11-18",
-        severity = "High",
-        summary = "Electrical panel left open; area secured and reported."
-    )
-)

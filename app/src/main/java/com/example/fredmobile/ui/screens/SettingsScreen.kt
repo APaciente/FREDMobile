@@ -8,13 +8,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.fredmobile.ui.settings.SettingsViewModel
+import com.example.fredmobile.ui.settings.SettingsViewModelFactory
 
 /**
  * Settings and preferences screen for FRED.
- * Milestone 1: all state is local (fake).
- * Milestone 3: connect to DataStore with real saved preferences.
+ * Milestone 1: local-only.
+ * Milestone 3: now backed by DataStore via SettingsViewModel.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -22,12 +25,14 @@ fun SettingsScreen(
     navController: NavController,
     onSignOut: () -> Unit
 ) {
-    // Local-only fake settings for PM1
-    var notificationsEnabled by remember { mutableStateOf(true) }
-    var darkModeEnabled by remember { mutableStateOf(false) }
-    var autoCheckIn by remember { mutableStateOf(false) }
-    var weatherUnit by remember { mutableStateOf("Celsius") }
+    val context = LocalContext.current
 
+    // Get SettingsViewModel with factory (so it has a Context for DataStore)
+    val viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+        factory = SettingsViewModelFactory(context)
+    )
+
+    val uiState by viewModel.uiState.collectAsState()
     val scrollState = rememberScrollState()
 
     Scaffold(
@@ -35,6 +40,30 @@ fun SettingsScreen(
             TopAppBar(
                 title = { Text("Settings") }
             )
+        },
+        bottomBar = {
+            // Persistent sign-out at the bottom
+            Surface(shadowElevation = 4.dp) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Button(
+                        onClick = onSignOut,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
+                    ) {
+                        Text("Sign out")
+                    }
+                }
+            }
         }
     ) { innerPadding ->
         Column(
@@ -55,15 +84,15 @@ fun SettingsScreen(
             SettingsSwitchItem(
                 title = "Enable notifications",
                 subtitle = "Receive incident updates, reminders, and check-in alerts.",
-                checked = notificationsEnabled,
-                onCheckedChange = { notificationsEnabled = it }
+                checked = uiState.settings.notificationsEnabled,
+                onCheckedChange = { viewModel.setNotificationsEnabled(it) }
             )
 
             SettingsSwitchItem(
                 title = "Dark mode",
                 subtitle = "Use a darker color scheme to reduce eye strain.",
-                checked = darkModeEnabled,
-                onCheckedChange = { darkModeEnabled = it }
+                checked = uiState.settings.darkModeEnabled,
+                onCheckedChange = { viewModel.setDarkModeEnabled(it) }
             )
 
             // SAFETY SETTINGS
@@ -75,8 +104,8 @@ fun SettingsScreen(
             SettingsSwitchItem(
                 title = "Auto Check-In (placeholder)",
                 subtitle = "Allow app to check you in automatically when entering a site geofence.",
-                checked = autoCheckIn,
-                onCheckedChange = { autoCheckIn = it }
+                checked = uiState.settings.autoCheckInEnabled,
+                onCheckedChange = { viewModel.setAutoCheckInEnabled(it) }
             )
 
             // WEATHER SETTINGS
@@ -86,37 +115,19 @@ fun SettingsScreen(
             )
 
             WeatherUnitDropdown(
-                selected = weatherUnit,
-                onSelected = { weatherUnit = it }
+                selected = uiState.settings.weatherUnit,
+                onSelected = { viewModel.setWeatherUnit(it) }
             )
 
-            Spacer(modifier = Modifier.height(24.dp))
-
-            // SIGN OUT (bigger, easier to tap, not jammed at the bottom)
-            Button(
-                onClick = onSignOut,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                )
-            ) {
-                Text("Sign out")
-            }
-
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(80.dp))
 
             Text(
-                text = "Note: Settings will be saved with DataStore in Milestone 3.",
+                text = "Settings are saved with DataStore (Milestone 3).",
                 style = MaterialTheme.typography.bodySmall
             )
         }
     }
 }
-
 
 /**
  * A reusable switch item for settings.

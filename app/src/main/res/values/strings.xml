@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">FREDMobile</string>
+    <string name="app_name">FRED</string>
 
     <!-- Web client ID for Google Sign-In -->
     <string name="default_web_client_id">

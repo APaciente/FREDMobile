@@ -8,27 +8,49 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.fredmobile.ui.incident.IncidentViewModel
+import kotlinx.coroutines.launch
 
 /**
  * Incident report screen.
- * Milestone 1: local-only form with fake submit action.
- * Later milestones: save to Firestore, upload photos, etc.
+ * PM1: local-only form with fake submit action.
+ * PM3: now saves incidents to Firestore via [IncidentViewModel].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun IncidentScreen(navController: NavController) {
+fun IncidentScreen(
+    navController: NavController,
+    // For now these can be hard-coded or passed from Check-in/Sites later
+    siteId: String = "demo-site-id",
+    siteName: String = "Current Site",
+    incidentViewModel: IncidentViewModel = viewModel()
+) {
     var description by remember { mutableStateOf(TextFieldValue("")) }
     var severity by remember { mutableStateOf("Medium") }
     var includePhoto by remember { mutableStateOf(false) }
-    var showSnackbar by remember { mutableStateOf(false) }
 
     val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
+
+    val isSaving = incidentViewModel.isSaving
+    val errorMessage = incidentViewModel.errorMessage
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Report Incident") }
+                title = { Text("Report Incident") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
             )
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
@@ -95,7 +117,7 @@ fun IncidentScreen(navController: NavController) {
                 }
             }
 
-            // PHOTO + EXTRA
+            // PHOTO + EXTRA (still PM1 placeholder)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
@@ -135,40 +157,59 @@ fun IncidentScreen(navController: NavController) {
             Button(
                 onClick = {
                     if (description.text.isBlank()) {
-                        // fake validation
-                        showSnackbar = true
+                        // simple validation
+                        scope.launch {
+                            snackbarHostState.showSnackbar(
+                                message = "Please add a description before submitting."
+                            )
+                        }
                     } else {
-                        // For PM1 we just clear the form and show success
-                        description = TextFieldValue("")
-                        severity = "Medium"
-                        includePhoto = false
-                        showSnackbar = true
+                        incidentViewModel.submitIncident(
+                            siteId = siteId,
+                            siteName = siteName,
+                            severity = severity,
+                            description = description.text
+                        ) {
+                            // onSuccess
+                            scope.launch {
+                                snackbarHostState.showSnackbar(
+                                    message = "Incident saved to Firestore.",
+                                    withDismissAction = true
+                                )
+                            }
+
+                            // reset form
+                            description = TextFieldValue("")
+                            severity = "Medium"
+                            includePhoto = false
+
+                            // optional: go back to previous screen (e.g., History)
+                            navController.popBackStack()
+                        }
                     }
                 },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(52.dp),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isSaving
             ) {
-                Text("Submit Incident (PM1 sample)")
+                Text(if (isSaving) "Submitting..." else "Submit Incident")
             }
 
-            // Show snackbar feedback
-            LaunchedEffect(showSnackbar) {
-                if (showSnackbar) {
-                    snackbarHostState.showSnackbar(
-                        message = "Incident submitted locally (demo for Milestone 1).",
-                        withDismissAction = true
-                    )
-                    showSnackbar = false
-                }
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
             }
         }
     }
 }
 
 /**
- * Simple severity selector using Assist chips.
+ * Simple severity selector using Filter chips.
  */
 @Composable
 private fun SeveritySelector(
