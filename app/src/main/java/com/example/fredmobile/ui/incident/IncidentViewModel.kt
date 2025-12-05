@@ -26,6 +26,7 @@ class IncidentViewModel(
         siteName: String,
         severity: String,
         description: String,
+        photoUri: String?,
         onSuccess: () -> Unit
     ) {
         viewModelScope.launch {
@@ -33,11 +34,12 @@ class IncidentViewModel(
                 isSaving = true
                 errorMessage = null
 
-                repo.createIncident(
+                repo.createIncidentWithOptionalPhoto(
                     siteId = siteId,
                     siteName = siteName,
                     severity = severity,
-                    description = description
+                    description = description,
+                    localPhotoUri = photoUri
                 )
 
                 isSaving = false

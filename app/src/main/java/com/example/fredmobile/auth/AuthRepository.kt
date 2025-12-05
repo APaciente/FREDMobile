@@ -3,6 +3,7 @@ package com.example.fredmobile.auth
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.UserProfileChangeRequest
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -26,9 +27,25 @@ class AuthRepository(
         return result.user?.toAuthUser()
     }
 
-    suspend fun registerWithEmail(email: String, password: String): AuthUser? {
+    /**
+     * Register with email/password and optionally set a display name.
+     */
+    suspend fun registerWithEmail(
+        email: String,
+        password: String,
+        displayName: String?
+    ): AuthUser? {
         val result = auth.createUserWithEmailAndPassword(email, password).await()
-        return result.user?.toAuthUser()
+        val firebaseUser = result.user
+
+        if (firebaseUser != null && !displayName.isNullOrBlank()) {
+            val profileUpdates = UserProfileChangeRequest.Builder()
+                .setDisplayName(displayName)
+                .build()
+            firebaseUser.updateProfile(profileUpdates).await()
+        }
+
+        return firebaseUser?.toAuthUser()
     }
 
     /**

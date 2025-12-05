@@ -13,5 +13,6 @@ data class Incident(
     val siteName: String = "",
     val severity: String = "Low",
     val description: String = "",
-    val createdAt: Timestamp? = null
+    val createdAt: Timestamp? = null,
+    val photoUrl: String? = null 
 )

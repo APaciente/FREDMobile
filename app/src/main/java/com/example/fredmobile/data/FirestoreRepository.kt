@@ -1,11 +1,15 @@
 package com.example.fredmobile.data
 
+import android.net.Uri
 import com.example.fredmobile.model.firestore.CheckIn
 import com.example.fredmobile.model.firestore.Incident
 import com.google.firebase.Timestamp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
+import java.util.UUID
+
 
 /**
  * Repository wrapping Firestore access for check-ins and incidents.
@@ -16,6 +20,9 @@ class FirestoreRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
+
+    // storage lives here, as a property:
+    private val storage = FirebaseStorage.getInstance()
 
     // Convenience to get current UID or throw
     private val uid: String
@@ -78,28 +85,55 @@ class FirestoreRepository(
 
     // ---- INCIDENTS ----
 
-    suspend fun createIncident(
+    suspend fun createIncidentWithOptionalPhoto(
         siteId: String,
         siteName: String,
         severity: String,
-        description: String
+        description: String,
+        localPhotoUri: String?   // can be null
     ): Incident {
         val ref = db.collection("users")
             .document(uid)
             .collection("incidents")
             .document()
 
+        // 1) Upload photo if we have one
+        val photoUrl: String? = if (!localPhotoUri.isNullOrBlank()) {
+            uploadIncidentPhoto(uid, localPhotoUri)
+        } else {
+            null
+        }
+
+        // 2) Build incident
         val incident = Incident(
             id = ref.id,
             siteId = siteId,
             siteName = siteName,
             severity = severity,
             description = description,
-            createdAt = Timestamp.now()
+            createdAt = Timestamp.now(),
+            photoUrl = photoUrl
         )
 
         ref.set(incident).await()
         return incident
+    }
+
+    private suspend fun uploadIncidentPhoto(
+        uid: String,
+        localPhotoUri: String
+    ): String {
+        val fileName = UUID.randomUUID().toString() + ".jpg"
+
+        val ref = storage.reference
+            .child("incidents")
+            .child(uid)
+            .child(fileName)
+
+        val uri = Uri.parse(localPhotoUri)
+
+        ref.putFile(uri).await()
+        return ref.downloadUrl.await().toString()
     }
 
     suspend fun deleteIncident(incidentId: String) {

@@ -2,156 +2,147 @@
 
 ## Overview
 
-FRED Mobile is an Android application designed for field workers who need a simple
-and reliable way to:
+FRED Mobile is an Android application built for field workers who need a simple and reliable way to:
+
 - Check in and out of work sites
 - Report safety incidents
 - View site information
-- Review their daily activity
-- Quickly see weather and environmental conditions
+- Review daily activity
+- Monitor weather and environmental conditions in real time
 
-The app focuses on clarity, ease of use, and mobile-first workflows. It is being
-developed as part of my final project for **Mobile Application Development**.
+The app emphasizes clarity, accessibility, and mobile-first workflows, and is being developed as part of the **Mobile Application Development Final Project**.
 
 ---
 
 ## Application Description
 
-FRED Mobile helps prevent missed check-ins, streamlines safety reporting, and
-gives field workers fast access to site conditions such as temperature, forecasts,
-and air quality.
+FRED Mobile streamlines workplace safety operations by centralizing:
 
-In Milestone 1, all data was local.  
-In Milestone 2, the app now integrates real weather data powered by the
-OpenWeatherMap API — including three live endpoints:
+- Site check-ins
+- Incident reporting
+- Weather and air-quality monitoring
+- Activity history and logs
 
-- **Current weather** (temperature, description)
-- **Short-term forecast** (next 3 hours)
-- **Air quality** (AQI)
+Originally, all data was local (Milestone 1).  
+In Milestone 2, the app integrates **live weather data** using three OpenWeatherMap API endpoints:
 
-This information appears directly on the Check-In screen to help workers
-understand their environment before starting a shift.
+- **Current Weather**
+- **Short-term Forecast (3-hour)**
+- **Air Quality Index (AQI)**
 
-The design follows Material3 guidelines and prioritizes accessibility,
-clarity, and real-world usability for workers who may be on-site, underground,
-or in remote areas.
+These values appear directly on the Check-In screen so workers can understand conditions before starting their shift.
+
+The UI follows **Material3** design, ensuring an accessible and intuitive experience even in demanding environments such as industrial sites, remote locations, or underground facilities.
 
 ---
 
 ## Accessibility Review & Fix Plan
 
-The Android Accessibility Scanner was run on all screens (Auth, Home, Sites,
-Check-In, Incident, History, Settings). A few minor issues were detected, and
-the planned fixes are listed below.
+The Google Accessibility Scanner was run across key screens (Auth, Home, Check-In, Incident, Sites, History, Settings).  
+Findings and planned fixes include:
 
-### 1. Duplicate item descriptions (Switches)
-Scanner flagged repeated speakable text such as “Off.”  
-**Fix (planned for M2/M3):**  
-Add unique `contentDescription` values like:
-- “Toggle notifications”
-- “Toggle dark mode”
-- “Toggle auto check-in”
+### 1. Duplicate switch descriptions
+Scanner warned that switches speak the same text (e.g., “Off”).  
+**Planned Fix:** Add unique `contentDescription` values such as:
+- “Enable notifications”
+- “Enable dark mode”
+- “Allow auto check-in”
 
-### 2. Repeated “View details” buttons on the Sites screen
-All site cards currently show the same placeholder text.  
-**Fix (planned):**  
-Replace with dynamic labels:
+### 2. Repeated ‘View details’ buttons on Sites screen
+All cards currently share identical label text.  
+**Planned Fix:** Make them dynamic, e.g.:
 - “View details for North River Plant”
-- “View details for West Substation”
 
-### 3. Repeated text descriptions in the History screen
-Items such as “Status: Completed” repeat without context.  
-**Fix (planned):**  
-Add descriptive text such as:
-- “Status completed for North River Plant, November 25”
+### 3. Missing context in History items
+Items such as “Status: Completed” repeat without meaning.  
+**Planned Fix:** Add context-rich descriptions.
 
-### 4. Text contrast warnings
-Scanner recommended stronger contrast for certain button text.  
-**Fix (planned):**  
-Use Material3 semantic colors (`onPrimary`, `onSurface`) to meet WCAG AA.
+### 4. Minor text contrast warnings
+Scanner flagged specific UI elements.  
+**Planned Fix:** Use Material3 semantic colors (`onPrimary`, `onSurface`) for WCAG AA compliance.
 
 ---
 
-## Current Features – Milestone 2
+## Current Features (Milestone 2)
 
 ### Home Dashboard
-- Navigation to Check-In, Sites, Incident Report, History, and Settings
-- Clean Material3 layout with modern card design
+- Navigation to Check-In, Sites, Incidents, History, and Settings
+- Rotating safety messages (5-item cycle)
+- Clean and accessible Material3 layout
 
 ### Check-In Screen
-- Shows current site (name, address, coordinates)
-- Local check-in / check-out state
-- Integrated real-time weather information:
-  - **Current temperature + conditions**
-  - **Next 3-hour forecast**
-  - **Air Quality Index (AQI)**
-- Uses all three required PM2 API endpoints
+- Displays active site (name, details)
+- Local check-in/check-out logic
+- Integrated **live weather** via 3 API endpoints:
+  - Current temperature & conditions
+  - 3-hour forecast preview
+  - Air Quality Index (AQI)
+- Weather ViewModel handles data retrieval and UI state
 
-### Incident Report Screen
-- Severity selector (Low, Medium, High)
-- Description text field
-- Optional “Include photo” placeholder
+### Incident Reporting
+- Severity selector (Low / Medium / High)
+- Description field with validation
+- Optional photo picker (local only)
 - Snackbar confirmation on submit
 
 ### Sites Screen
-- List of sample work sites (from Milestone 1)
-- Each card includes name, address, and coordinates
-- “View details” placeholder (to be expanded in Milestone 3)
+- List of sample work sites
+- Placeholder detail navigation (expanded in Milestone 3)
 
 ### History Screen
-- Two tabs: **Check-ins** and **Incidents**
-- Preloaded sample data
-- Will later load from Firestore
+- Tabs for Check-Ins and Incidents
+- Displays previous activity
 
 ### Settings Screen
-- Toggles for notifications, dark mode, auto check-in
-- Weather unit dropdown (Celsius/Fahrenheit)
-- Placeholder location for sign-out button (Milestone 3)
-- Local-only persistence in PM1 and PM2
+- Notification toggle
+- Dark mode toggle
+- Auto check-in toggle
+- Celsius/Fahrenheit selection
+- Sign-out placeholder (implemented in Milestone 3)
 
 ---
 
-## Planned Features
-
-### Milestone 3 – Authentication & Database
+## Planned Features (Milestone 3)
 
 ### Firebase Authentication
 - Email/password login
-- Second login method (Google or GitHub)
+- Google Sign-In
+- Auth-gated navigation
 
-### Database Persistence (Firestore or Room)
-- Store sites
-- Store check-ins
-- Store incident reports
-- Store user data
+### Database Persistence (Firestore)
+- Persist check-ins
+- Persist incidents
+- Store user roles (admin/worker)
 - Full CRUD support
 
-### Settings Persistence (Jetpack DataStore)
-- Dark mode preference
-- Notification settings
-- Weather unit selection
+### Settings Persistence (DataStore)
+- Save dark mode preference
+- Save weather units
+- Save notification and auto-check-in toggles
 
 ---
 
 ## Tech Stack
 
 - **Language:** Kotlin
-- **UI:** Jetpack Compose + Material3
-- **Architecture:** Single Activity, ViewModel, State Hoisting
+- **UI Framework:** Jetpack Compose + Material3
+- **Architecture:** Single-Activity, MVVM, State Hoisting
 - **Networking:** Retrofit + Coroutines
-- **Backend:** OpenWeatherMap API (current, forecast, AQI)
+- **Data/Models:** Kotlin data classes, UI state wrappers
+- **Backend:** OpenWeatherMap API (weather, forecast, AQI)
+- **Persistence:** Firestore (Milestone 3)
 - **Navigation:** Navigation Compose
 
 ---
 
 ## How to Run
 
-1. Clone the repository.
-2. Open the project in **Android Studio Giraffe or newer**.
-3. Sync Gradle.
-4. Add your `apikey` inside the `WeatherRepository`.
-5. Run the **app** module on an emulator or physical device (API 24+).
+1. Clone the repository
+2. Open the project using **Android Studio Giraffe or newer**
+3. Sync Gradle
+4. Add your OpenWeatherMap API key inside `WeatherRepository`
+5. Run the **app** module on an emulator or physical device (Android 7.0+)
 
-Firebase setup instructions will be added when Milestone 3 development begins.
+Firebase setup instructions will be added when Milestone 3 is completed.
 
 ---

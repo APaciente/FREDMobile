@@ -9,7 +9,7 @@ import kotlinx.coroutines.launch
  * ViewModel that manages sign-in / sign-up / sign-out state.
  *
  * Milestone 3:
- *  - Email/password sign-in
+ *  - Email/password sign-in + registration
  *  - Google sign-in (via ID token)
  *  - Exposes a simple AuthUiState for the composable AuthScreen.
  */
@@ -33,6 +33,24 @@ class AuthViewModel(
 
     fun onPasswordChange(newPassword: String) {
         uiState.value = uiState.value.copy(password = newPassword, errorMessage = null)
+    }
+
+    fun onDisplayNameChange(newName: String) {
+        uiState.value = uiState.value.copy(displayName = newName, errorMessage = null)
+    }
+
+    fun switchToRegisterMode() {
+        uiState.value = uiState.value.copy(
+            isRegistering = true,
+            errorMessage = null
+        )
+    }
+
+    fun switchToSignInMode() {
+        uiState.value = uiState.value.copy(
+            isRegistering = false,
+            errorMessage = null
+        )
     }
 
     fun signInWithEmail() {
@@ -67,10 +85,11 @@ class AuthViewModel(
     fun registerWithEmail() {
         val email = uiState.value.email.trim()
         val password = uiState.value.password
+        val displayName = uiState.value.displayName.trim()
 
-        if (email.isBlank() || password.isBlank()) {
+        if (email.isBlank() || password.isBlank() || displayName.isBlank()) {
             uiState.value = uiState.value.copy(
-                errorMessage = "Email and password are required."
+                errorMessage = "Name, email, and password are required."
             )
             return
         }
@@ -79,10 +98,11 @@ class AuthViewModel(
 
         viewModelScope.launch {
             try {
-                val user = repo.registerWithEmail(email, password)
+                val user = repo.registerWithEmail(email, password, displayName)
                 uiState.value = uiState.value.copy(
                     isLoading = false,
-                    currentUser = user
+                    currentUser = user,
+                    isRegistering = false
                 )
             } catch (e: Exception) {
                 uiState.value = uiState.value.copy(
@@ -127,7 +147,9 @@ class AuthViewModel(
         uiState.value = uiState.value.copy(
             currentUser = null,
             email = "",
-            password = ""
+            password = "",
+            displayName = "",
+            isRegistering = false
         )
     }
 }

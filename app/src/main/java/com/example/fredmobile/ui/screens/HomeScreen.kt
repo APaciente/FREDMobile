@@ -15,8 +15,10 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fredmobile.R
+import com.example.fredmobile.ui.checkin.CheckInViewModel
 import com.example.fredmobile.ui.navigation.FredBottomBar
 import com.example.fredmobile.ui.navigation.Routes
 import com.google.firebase.auth.FirebaseAuth
@@ -29,7 +31,8 @@ import kotlinx.coroutines.delay
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navController: NavController
+    navController: NavController,
+    checkInViewModel: CheckInViewModel = viewModel()
 ) {
     val auth = FirebaseAuth.getInstance()
     val currentUser = auth.currentUser
@@ -41,6 +44,10 @@ fun HomeScreen(
             ?: "there"
         raw.substringBefore(" ")
     }
+
+    // Use existing check-in state so messages can react to it
+    val checkInState = checkInViewModel.uiState
+    val isCheckedIn = checkInState.isCheckedIn
 
     Scaffold(
         topBar = {
@@ -68,7 +75,10 @@ fun HomeScreen(
         ) {
 
             // Avatar + coach messages
-            AssistantAvatarSection(firstName = firstName)
+            AssistantAvatarSection(
+                firstName = firstName,
+                isCheckedIn = isCheckedIn
+            )
 
             Spacer(modifier = Modifier.height(8.dp))
 
@@ -91,20 +101,31 @@ fun HomeScreen(
 
 /**
  * Wraps the message card + avatar image.
+ * For now this only reacts to check-in status (no live weather / AQI yet).
  */
 @Composable
 private fun AssistantAvatarSection(
     firstName: String,
+    isCheckedIn: Boolean,
     modifier: Modifier = Modifier
 ) {
-    // Messages the avatar will cycle through
-    val messages = listOf(
-        "Weather looks good, ready to check in?",
-        "Hi $firstName, don’t forget to check in when you arrive on site.",
-        "If you see something unsafe, log an incident so your team knows.",
-        "Remember to check out when you leave for the day.",
-        "Stay safe out there today."
-    )
+    // Build the dynamic messages list
+    val messages = remember(firstName, isCheckedIn) {
+        buildList {
+            // Status-aware main reminder
+            if (isCheckedIn) {
+                add("You’re checked in right now. Don’t forget to check out before you leave.")
+            } else {
+                add("Hi $firstName, don’t forget to check in when you arrive on site.")
+            }
+
+            // Generic / app-related tips
+            add("If you see something unsafe, log an incident so your team knows.")
+            add("You can review your past shifts any time in the History tab.")
+            add("Heading to a different site today? Double-check the map before you check in.")
+            add("Stay safe out there today.")
+        }
+    }
 
     var messageIndex by remember { mutableStateOf(0) }
     val currentMessage = messages[messageIndex]
@@ -160,7 +181,7 @@ private fun AssistantAvatarSection(
             painter = painterResource(id = R.drawable.fred_avatar),
             contentDescription = "FRED assistant avatar",
             contentScale = ContentScale.Crop,
-            alignment = Alignment.TopCenter,   // 👈 keep the head in view, crop more of the desk
+            alignment = Alignment.TopCenter,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(340.dp)

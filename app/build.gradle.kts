@@ -56,8 +56,10 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
 
-    // Google Sign-In
+    // Google
     implementation(libs.play.services.auth)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
 
     // Coroutines for async work (Firebase, DB, etc.)
     implementation(libs.kotlinx.coroutines.android)
@@ -67,6 +69,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
     implementation(libs.firebase.firestore)
+    implementation(libs.firebase.storage)
 
     // Navigation for Compose
     implementation(libs.androidx.navigation.compose)

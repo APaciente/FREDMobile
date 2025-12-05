@@ -70,7 +70,6 @@ fun AuthScreen(
         }
     }
 
-
     // Navigate away when user is authenticated
     LaunchedEffect(uiState.currentUser) {
         if (uiState.currentUser != null) {
@@ -84,8 +83,11 @@ fun AuthScreen(
         uiState = uiState,
         onEmailChange = authViewModel::onEmailChange,
         onPasswordChange = authViewModel::onPasswordChange,
+        onDisplayNameChange = authViewModel::onDisplayNameChange,
         onSignInClick = authViewModel::signInWithEmail,
         onRegisterClick = authViewModel::registerWithEmail,
+        onSwitchToRegister = authViewModel::switchToRegisterMode,
+        onSwitchToSignIn = authViewModel::switchToSignInMode,
         onGoogleClick = {
             val intent = googleSignInClient.signInIntent
             googleLauncher.launch(intent)
@@ -98,10 +100,15 @@ private fun AuthContent(
     uiState: AuthUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onDisplayNameChange: (String) -> Unit,
     onSignInClick: () -> Unit,
     onRegisterClick: () -> Unit,
+    onSwitchToRegister: () -> Unit,
+    onSwitchToSignIn: () -> Unit,
     onGoogleClick: () -> Unit
 ) {
+    val isRegister = uiState.isRegistering
+
     Scaffold { innerPadding ->
         Column(
             modifier = Modifier
@@ -116,11 +123,21 @@ private fun AuthContent(
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(
-                text = "Sign in to continue",
+                text = if (isRegister) "Create your account" else "Sign in to continue",
                 style = MaterialTheme.typography.bodyMedium
             )
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Name only in register mode
+            if (isRegister) {
+                OutlinedTextField(
+                    value = uiState.displayName,
+                    onValueChange = onDisplayNameChange,
+                    label = { Text("Name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
 
             OutlinedTextField(
                 value = uiState.email,
@@ -147,24 +164,42 @@ private fun AuthContent(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            Button(
-                onClick = onSignInClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                enabled = !uiState.isLoading
-            ) {
-                Text("Sign in")
-            }
+            if (!isRegister) {
+                // SIGN IN MODE
+                Button(
+                    onClick = onSignInClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    enabled = !uiState.isLoading
+                ) {
+                    Text("Sign in")
+                }
 
-            OutlinedButton(
-                onClick = onRegisterClick,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(48.dp),
-                enabled = !uiState.isLoading
-            ) {
-                Text("Create account")
+                OutlinedButton(
+                    onClick = onSwitchToRegister,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    enabled = !uiState.isLoading
+                ) {
+                    Text("Create account")
+                }
+            } else {
+                // REGISTER MODE
+                Button(
+                    onClick = onRegisterClick,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(48.dp),
+                    enabled = !uiState.isLoading
+                ) {
+                    Text("Create account")
+                }
+
+                TextButton(onClick = onSwitchToSignIn) {
+                    Text("Back to sign in")
+                }
             }
 
             Divider(modifier = Modifier.padding(vertical = 8.dp))
