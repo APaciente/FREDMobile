@@ -1,6 +1,8 @@
 package com.example.fredmobile.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -13,6 +15,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fredmobile.ui.incident.IncidentViewModel
+import com.example.fredmobile.ui.navigation.FredBottomBar
 import kotlinx.coroutines.launch
 
 /**
@@ -35,6 +38,7 @@ fun IncidentScreen(
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
+    val scrollState = rememberScrollState()
 
     val isSaving = incidentViewModel.isSaving
     val errorMessage = incidentViewModel.errorMessage
@@ -53,13 +57,17 @@ fun IncidentScreen(
                 }
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        bottomBar = {
+            FredBottomBar(navController = navController)
+        }
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
@@ -151,7 +159,8 @@ fun IncidentScreen(
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            // Small spacer instead of weight so content can scroll naturally
+            Spacer(modifier = Modifier.height(8.dp))
 
             // SUBMIT BUTTON
             Button(
@@ -204,6 +213,9 @@ fun IncidentScreen(
                     style = MaterialTheme.typography.bodySmall
                 )
             }
+
+            // tiny spacer at very bottom so content isn't flush with nav bar
+            Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }

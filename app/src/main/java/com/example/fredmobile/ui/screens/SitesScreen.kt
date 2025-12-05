@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.navigation.NavController
 import com.example.fredmobile.model.Site
+import com.example.fredmobile.ui.navigation.FredBottomBar
 
 /**
  * Screen that shows the list of work sites.
@@ -34,6 +35,9 @@ fun SitesScreen(navController: NavController) {
                     }
                 }
             )
+        },
+        bottomBar = {
+            FredBottomBar(navController = navController)
         }
     ) { innerPadding ->
         Column(

@@ -15,7 +15,7 @@ import com.example.fredmobile.model.firestore.CheckIn
 import com.example.fredmobile.model.firestore.Incident
 import com.example.fredmobile.ui.history.HistoryViewModel
 import com.example.fredmobile.util.toReadableString
-
+import com.example.fredmobile.ui.navigation.FredBottomBar
 
 /**
  * History screen showing past check-ins and incidents.
@@ -45,6 +45,9 @@ fun HistoryScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            FredBottomBar(navController = navController)
         }
     ) { innerPadding ->
         Column(

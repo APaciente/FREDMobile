@@ -19,18 +19,15 @@ class MainActivity : ComponentActivity() {
         setContent {
             val context = LocalContext.current
 
-            // Grab SettingsViewModel so we can read darkMode from DataStore
+            // Read settings from DataStore
             val settingsViewModel: SettingsViewModel = viewModel(
                 factory = SettingsViewModelFactory(context)
             )
             val settingsUiState by settingsViewModel.uiState.collectAsState()
 
-            // If still loading, you can fall back to system theme if you want.
             val darkModeEnabled = settingsUiState.settings.darkModeEnabled
 
-            FredmobileTheme(
-                darkTheme = darkModeEnabled
-            ) {
+            FredmobileTheme(darkTheme = darkModeEnabled) {
                 AppNavHost()
             }
         }
