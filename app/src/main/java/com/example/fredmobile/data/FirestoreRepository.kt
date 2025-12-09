@@ -42,6 +42,8 @@ class FirestoreRepository(
      * @return The created [CheckIn] model.
      */
     suspend fun createCheckIn(siteId: String, siteName: String): CheckIn {
+        val user = auth.currentUser
+
         val ref = db.collection("users")
             .document(uid)
             .collection("checkins")
@@ -49,6 +51,8 @@ class FirestoreRepository(
 
         val checkIn = CheckIn(
             id = ref.id,
+            userId = uid,                                  // <-- ADD THIS
+            userName = user?.displayName ?: (user?.email ?: ""), // <-- ADD THIS
             siteId = siteId,
             siteName = siteName,
             inTime = Timestamp.now(),
@@ -73,7 +77,8 @@ class FirestoreRepository(
         ref.update(
             mapOf(
                 "outTime" to Timestamp.now(),
-                "status" to "COMPLETED"
+                "status" to "COMPLETED",
+                "userId" to uid
             )
         ).await()
     }

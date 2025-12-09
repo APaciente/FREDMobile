@@ -98,17 +98,17 @@ fun SettingsScreen(
                 onCheckedChange = { viewModel.setNotificationsEnabled(it) }
             )
 
-            // ACCESSIBILITY
-            Text(
-                text = "Accessibility",
-                style = MaterialTheme.typography.titleMedium
-            )
-
             SettingsSwitchItem(
                 title = "Dark mode",
                 subtitle = "Use a darker color scheme to reduce eye strain.",
                 checked = uiState.settings.darkModeEnabled,
                 onCheckedChange = { viewModel.setDarkModeEnabled(it) }
+            )
+
+            // ACCESSIBILITY
+            Text(
+                text = "Accessibility",
+                style = MaterialTheme.typography.titleMedium
             )
 
             SettingsSwitchItem(

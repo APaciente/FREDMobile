@@ -22,13 +22,7 @@ import com.example.fredmobile.ui.navigation.FredBottomBar
 import com.example.fredmobile.util.toReadableString
 
 /**
- * Screen that displays the user's history of check-ins and incidents.
- *
- * Uses [HistoryViewModel] to load data from Firestore and presents it
- * in two tabs: one for check-ins and one for incidents.
- *
- * Also lets the user export the current tab to a CSV file
- * that can be opened in Excel or Google Sheets.
+ * History screen for viewing past check-ins and incidents, with an option to export data as CSV.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,17 +31,14 @@ fun HistoryScreen(
     historyViewModel: HistoryViewModel = viewModel()
 ) {
     val uiState = historyViewModel.uiState
-    var selectedTab by remember { mutableStateOf(0) } // 0 = Check-ins, 1 = Incidents
+    var selectedTab by remember { mutableStateOf(0) }
     val context = LocalContext.current
 
-    // Launcher for "Create document" using Storage Access Framework.
-    // We use it to let the user pick the filename and destination.
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
 
-        // Build CSV based on which tab is active
         val csv = if (selectedTab == 0) {
             buildCheckInsCsv(uiState.checkIns)
         } else {
@@ -59,7 +50,6 @@ fun HistoryScreen(
                 out.write(csv.toByteArray())
             }
         } catch (e: Exception) {
-            // For now we just log or swallow; you could add a Snackbar later.
             e.printStackTrace()
         }
     }
@@ -79,7 +69,6 @@ fun HistoryScreen(
                 actions = {
                     IconButton(
                         onClick = {
-                            // Suggest a file name depending on the active tab
                             val suggestedName = if (selectedTab == 0) {
                                 "checkins.csv"
                             } else {
@@ -106,7 +95,6 @@ fun HistoryScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-            // Tabs for switching between check-ins and incidents
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
@@ -153,7 +141,7 @@ fun HistoryScreen(
 }
 
 /**
- * List of past check-ins with basic details and a delete action.
+ * Displays a list of past check-ins with basic details and a delete action.
  */
 @Composable
 private fun CheckInHistoryList(
@@ -165,8 +153,12 @@ private fun CheckInHistoryList(
         return
     }
 
+    val sorted = remember(checkIns) {
+        checkIns.sortedByDescending { it.inTime?.seconds ?: 0L }
+    }
+
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(checkIns, key = { it.id }) { item ->
+        items(sorted, key = { it.id }) { item ->
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -210,7 +202,7 @@ private fun CheckInHistoryList(
 }
 
 /**
- * List of reported incidents with details and a delete action.
+ * Displays a list of reported incidents with details and a delete action.
  */
 @Composable
 private fun IncidentHistoryList(
@@ -222,8 +214,12 @@ private fun IncidentHistoryList(
         return
     }
 
+    val sorted = remember(incidents) {
+        incidents.sortedByDescending { it.createdAt?.seconds ?: 0L }
+    }
+
     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        items(incidents, key = { it.id }) { incident ->
+        items(sorted, key = { it.id }) { incident ->
             Card(
                 modifier = Modifier.fillMaxWidth()
             ) {
@@ -266,13 +262,13 @@ private fun IncidentHistoryList(
     }
 }
 
-/* ---------- CSV helpers ---------- */
-
 private fun buildCheckInsCsv(checkIns: List<CheckIn>): String {
     if (checkIns.isEmpty()) return "Site,Status,In,Out\n"
 
     val header = "Site,Status,In,Out\n"
-    val rows = checkIns.joinToString("\n") { ci ->
+    val sorted = checkIns.sortedByDescending { it.inTime?.seconds ?: 0L }
+
+    val rows = sorted.joinToString("\n") { ci ->
         val site = ci.siteName.csvSafe()
         val status = ci.status.csvSafe()
         val inTime = ci.inTime.toReadableString().csvSafe()
@@ -286,7 +282,9 @@ private fun buildIncidentsCsv(incidents: List<Incident>): String {
     if (incidents.isEmpty()) return "Site,Severity,Description,Reported\n"
 
     val header = "Site,Severity,Description,Reported\n"
-    val rows = incidents.joinToString("\n") { inc ->
+    val sorted = incidents.sortedByDescending { it.createdAt?.seconds ?: 0L }
+
+    val rows = sorted.joinToString("\n") { inc ->
         val site = inc.siteName.csvSafe()
         val severity = inc.severity.csvSafe()
         val desc = inc.description.csvSafe()
@@ -297,7 +295,7 @@ private fun buildIncidentsCsv(incidents: List<Incident>): String {
 }
 
 /**
- * Simple CSV escaping: wrap value in quotes and escape any quotes inside.
+ * Simple CSV escaping: wraps the value in quotes and escapes existing quotes.
  */
 private fun String.csvSafe(): String =
     "\"" + this.replace("\"", "\"\"") + "\""

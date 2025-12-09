@@ -10,6 +10,12 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 
+/**
+ * Broadcast receiver that handles geofence transition events and records them in Firestore.
+ *
+ * Geofence events are stored in the [COLLECTION_NAME] collection with basic details
+ * such as user, site, transition type, and timestamp.
+ */
 class GeofenceBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -40,7 +46,6 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
             return
         }
 
-        // Current signed-in user (if any)
         val user = FirebaseAuth.getInstance().currentUser
         if (user == null) {
             Log.d(TAG, "No signed-in user, skipping Firestore write for transition=$transitionType")
@@ -50,7 +55,7 @@ class GeofenceBroadcastReceiver : BroadcastReceiver() {
         val db = FirebaseFirestore.getInstance()
 
         triggeringGeofences.forEach { geofence ->
-            val siteId = geofence.requestId // matches Site.id from GeofenceManager
+            val siteId = geofence.requestId
 
             val payload = hashMapOf(
                 "userId" to user.uid,

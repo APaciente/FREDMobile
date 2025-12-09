@@ -8,9 +8,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.navigation.NavController
 import com.example.fredmobile.model.Site
 import com.example.fredmobile.ui.navigation.FredBottomBar
@@ -20,8 +22,11 @@ import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import androidx.compose.ui.viewinterop.AndroidView
 
+/**
+ * Screen for managing work sites, including searching, previewing on a map,
+ * and configuring geofences for saved locations.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SitesScreen(
@@ -55,7 +60,6 @@ fun SitesScreen(
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Search + map + preview section (now the very top)
             item {
                 SearchAndMapSection(
                     uiState = uiState,
@@ -66,7 +70,6 @@ fun SitesScreen(
                 )
             }
 
-            // Saved sites header
             item {
                 Text(
                     text = "Saved sites",
@@ -75,7 +78,6 @@ fun SitesScreen(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // Saved sites list (each site is its own item in the same LazyColumn)
             items(uiState.sites) { site ->
                 val geofenceOn = uiState.geofencedSiteIds.contains(site.id)
 
@@ -91,7 +93,6 @@ fun SitesScreen(
                 )
             }
 
-            // Extra spacer so last card is not glued to bottom bar
             item {
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -99,6 +100,10 @@ fun SitesScreen(
     }
 }
 
+/**
+ * Search section for looking up addresses, previewing them on the map,
+ * and saving the preview as a site with optional geofencing.
+ */
 @Composable
 private fun SearchAndMapSection(
     uiState: SitesUiState,
@@ -143,9 +148,7 @@ private fun SearchAndMapSection(
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        MapPreviewAllSites(
-            uiState = uiState
-        )
+        MapPreviewAllSites(uiState = uiState)
 
         if (uiState.previewLatLng != null) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -161,7 +164,7 @@ private fun SearchAndMapSection(
                 singleLine = true
             )
             Row(
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Checkbox(
@@ -181,7 +184,7 @@ private fun SearchAndMapSection(
 }
 
 /**
- * Map that shows all saved sites and the current preview marker.
+ * Map view that displays all saved sites and the current preview marker.
  */
 @Composable
 private fun MapPreviewAllSites(
@@ -207,13 +210,10 @@ private fun MapPreviewAllSites(
 
     LaunchedEffect(sites, previewLatLng) {
         mapView.getMapAsync { googleMap ->
-            googleMap.uiSettings.apply {
-                setAllGesturesEnabled(true)
-            }
+            googleMap.uiSettings.setAllGesturesEnabled(true)
 
             googleMap.clear()
 
-            // Add markers for saved sites
             sites.forEach { site ->
                 val pos = LatLng(site.latitude, site.longitude)
                 googleMap.addMarker(
@@ -224,7 +224,6 @@ private fun MapPreviewAllSites(
                 )
             }
 
-            // Preview marker (for searched location)
             previewLatLng?.let { latLng ->
                 googleMap.addMarker(
                     MarkerOptions()
@@ -233,10 +232,9 @@ private fun MapPreviewAllSites(
                 )
             }
 
-            // Decide where to center the camera
             val focus = previewLatLng
                 ?: sites.firstOrNull()?.let { LatLng(it.latitude, it.longitude) }
-                ?: LatLng(49.9, -97.15) // default
+                ?: LatLng(49.9, -97.15)
 
             googleMap.moveCamera(
                 CameraUpdateFactory.newLatLngZoom(focus, 12f)
@@ -259,7 +257,7 @@ private fun MapPreviewAllSites(
 }
 
 /**
- * Card layout for displaying a single work site with a geofence toggle and a remove button.
+ * Card layout for displaying a single work site with a geofence toggle and remove action.
  */
 @Composable
 private fun SiteCard(
@@ -296,7 +294,7 @@ private fun SiteCard(
             Row(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
                     Text(
@@ -310,7 +308,7 @@ private fun SiteCard(
                 }
 
                 Column(
-                    horizontalAlignment = androidx.compose.ui.Alignment.End
+                    horizontalAlignment = Alignment.End
                 ) {
                     Switch(
                         checked = geofenceEnabled,

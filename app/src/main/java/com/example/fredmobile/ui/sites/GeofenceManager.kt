@@ -25,7 +25,7 @@ class GeofenceManager(
     private val geofencingClient: GeofencingClient =
         LocationServices.getGeofencingClient(context)
 
-    private val geofenceRadiusMeters = 150f   // tweak as you like
+    private val geofenceRadiusMeters = 150f
 
     private val geofencePendingIntent: PendingIntent by lazy {
         // Make sure GeofenceBroadcastReceiver is in this package or update the import.
