@@ -1,7 +1,6 @@
 package com.example.fredmobile.ui.screens
 
 import android.Manifest
-import android.location.Geocoder
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -17,10 +16,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fredmobile.model.Site
 import com.example.fredmobile.ui.checkin.CheckInViewModel
+import com.example.fredmobile.ui.location.LocationViewModel
 import com.example.fredmobile.ui.navigation.FredBottomBar
 import com.example.fredmobile.ui.settings.SettingsViewModel
 import com.example.fredmobile.ui.settings.SettingsViewModelFactory
@@ -30,27 +31,28 @@ import com.example.fredmobile.ui.weather.WeatherViewModel
 import com.example.fredmobile.util.mapWeatherDescriptionToEmoji
 import com.example.fredmobile.util.toOpenWeatherUnits
 import com.example.fredmobile.util.toTemperatureSuffix
-import android.annotation.SuppressLint
-import androidx.compose.ui.viewinterop.AndroidView
-import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.MapView
 import com.google.android.gms.maps.model.LatLng
 import com.google.android.gms.maps.model.MarkerOptions
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.tasks.await
-import kotlinx.coroutines.withContext
-import java.util.Locale
 
 /**
- * Screen for checking in and out of the current work site / current location.
+ * Screen for checking in and out of the current work site or current location.
+ *
+ * This screen:
+ * - Requests location permission.
+ * - Uses device location (with a fallback site).
+ * - Shows a map preview centered on the active site.
+ * - Loads weather data for the same coordinates.
+ * - Provides actions to check in and check out.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckInScreen(
     navController: NavController,
-    checkInViewModel: CheckInViewModel = viewModel(),
-    weatherViewModel: WeatherViewModel = viewModel()
+    checkInViewModel: CheckInViewModel,
+    weatherViewModel: WeatherViewModel,
+    locationViewModel: LocationViewModel
 ) {
     val context = LocalContext.current
 
@@ -62,14 +64,8 @@ fun CheckInScreen(
     val weatherUnitPref = settingsUiState.settings.weatherUnit
     val tempSuffix = weatherUnitPref.toTemperatureSuffix()
 
-    // --- Location plumbing ---------------------------------------------------
+    // --- Location permissions (data comes from LocationViewModel) ------------
 
-    // Fused location client
-    val fusedClient = remember {
-        LocationServices.getFusedLocationProviderClient(context)
-    }
-
-    // Do we have location permission?
     var hasLocationPermission by remember { mutableStateOf(false) }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -80,7 +76,7 @@ fun CheckInScreen(
                     (perms[Manifest.permission.ACCESS_COARSE_LOCATION] == true)
     }
 
-    // Ask for permission once when the screen first appears
+    // Ask for permission once when screen appears
     LaunchedEffect(Unit) {
         permissionLauncher.launch(
             arrayOf(
@@ -90,55 +86,16 @@ fun CheckInScreen(
         )
     }
 
-    // Device location (updated when permission is granted)
-    var userLocation by remember { mutableStateOf<LatLng?>(null) }
-
-    // Human-readable address for current coordinates
-    var resolvedAddress by remember { mutableStateOf<String?>(null) }
-
-    @SuppressLint("MissingPermission")
+    // When we have permission, let the LocationViewModel refresh the location
     LaunchedEffect(hasLocationPermission) {
         if (hasLocationPermission) {
-            try {
-                val loc = fusedClient.lastLocation.await()
-                if (loc != null) {
-                    val latLng = LatLng(loc.latitude, loc.longitude)
-                    userLocation = latLng
-
-                    // Reverse-geocode to a readable address
-                    val geocoder = Geocoder(context, Locale.getDefault())
-                    val result = withContext(Dispatchers.IO) {
-                        @Suppress("DEPRECATION")
-                        geocoder.getFromLocation(
-                            latLng.latitude,
-                            latLng.longitude,
-                            1
-                        )
-                    }?.firstOrNull()
-
-                    result?.let { addr ->
-                        val line1 = listOfNotNull(
-                            addr.featureName,     // house number / POI
-                            addr.thoroughfare     // street
-                        ).joinToString(" ")
-
-                        val cityLine = listOfNotNull(
-                            addr.locality,        // city
-                            addr.adminArea        // province
-                        ).joinToString(", ")
-
-                        resolvedAddress = listOfNotNull(line1, cityLine)
-                            .filter { it.isNotBlank() }
-                            .joinToString(", ")
-                    }
-                }
-            } catch (_: Exception) {
-                // swallow for now – fallback will be used
-            }
+            locationViewModel.refreshLocation()
         }
     }
 
-    // Fallback "site" if we don't have a real location yet
+    val locationState = locationViewModel.uiState
+
+    // Fallback site used if device location is not yet available.
     val fallbackSite = remember {
         Site(
             id = "site1",
@@ -149,29 +106,22 @@ fun CheckInScreen(
         )
     }
 
-    // Choose which coordinates to use: device location if available, else fallback site
-    val effectiveLatLng: LatLng = userLocation
+    val effectiveLatLng: LatLng = locationState.lastLocation
         ?: LatLng(fallbackSite.latitude, fallbackSite.longitude)
 
-    // Build a "UI site" that represents whatever we are using right now
-    val uiSite = remember(userLocation, effectiveLatLng, resolvedAddress) {
-        if (userLocation != null) {
-            val displayName = resolvedAddress ?: "Current location"
-            val displayAddress = resolvedAddress
-                ?: "Using GPS near %.4f, %.4f".format(
-                    effectiveLatLng.latitude,
-                    effectiveLatLng.longitude
-                )
+    // Build a Site model representing the current effective location.
+    val uiSite = remember(locationState.lastLocation, locationState.address) {
+        if (locationState.lastLocation != null) {
+            val displayName = locationState.address ?: "Current location"
 
             Site(
                 id = "current_location",
                 name = displayName,
-                address = displayAddress,
+                address = "Current location",
                 latitude = effectiveLatLng.latitude,
                 longitude = effectiveLatLng.longitude
             )
         } else {
-            // Before permission / first fix – fall back to your demo site
             fallbackSite.copy(
                 latitude = effectiveLatLng.latitude,
                 longitude = effectiveLatLng.longitude
@@ -182,7 +132,8 @@ fun CheckInScreen(
     val checkInState = checkInViewModel.uiState
     val weatherState = weatherViewModel.uiState
 
-    // --- Weather: ALWAYS use the same coords as the map / uiSite -------------
+    // --- Weather: use the same coordinates as the map / uiSite ---------------
+
     LaunchedEffect(effectiveLatLng, weatherUnitPref) {
         val units = weatherUnitPref.toOpenWeatherUnits()
         weatherViewModel.loadWeatherForSite(
@@ -218,7 +169,7 @@ fun CheckInScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-            // Scrollable content (cards)
+            // Scrollable content section (cards).
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -226,25 +177,21 @@ fun CheckInScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
 
-                // STATUS + SITE CARD (combined – now reflects uiSite)
                 StatusAndSiteCard(
                     checkInState = checkInState,
                     currentSite = uiSite
                 )
 
-                // MAP PREVIEW CARD – centered on uiSite coords
                 MapPreviewCard(
                     currentSite = uiSite,
                     hasLocationPermission = hasLocationPermission
                 )
 
-                // WEATHER SUMMARY – using same coords as map
                 WeatherSummaryCard(
                     weatherState = weatherState,
                     tempSuffix = tempSuffix
                 )
 
-                // NEXT HOURS – single row with 3 boxes (3h, 6h, 9h)
                 if (
                     !weatherState.isLoading &&
                     weatherState.errorMessage == null &&
@@ -259,7 +206,7 @@ fun CheckInScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // ACTION BUTTONS – pinned at the bottom above the nav bar
+            // Action buttons pinned above the bottom navigation bar.
             val canCheckIn = !checkInState.isCheckedIn && !checkInState.isLoading
             val canCheckOut = checkInState.isCheckedIn && !checkInState.isLoading
 
@@ -273,13 +220,11 @@ fun CheckInScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // CHECK IN BUTTON (green when clickable)
                 Button(
                     onClick = {
                         checkInViewModel.checkIn(
                             siteId = uiSite.id,
                             siteName = uiSite.name
-                            // later you can also pass lat/lon to Firestore if desired
                         )
                     },
                     modifier = Modifier.weight(1f),
@@ -296,7 +241,6 @@ fun CheckInScreen(
                     Text("Check In")
                 }
 
-                // CHECK OUT BUTTON (solid red when clickable)
                 Button(
                     onClick = { checkInViewModel.checkOut() },
                     modifier = Modifier.weight(1f),
@@ -320,8 +264,9 @@ fun CheckInScreen(
 /* ---------- Small composables ---------- */
 
 /**
- * Combined status + site info card.
- * Green when checked in, red when not checked in.
+ * Combined status and site information card.
+ *
+ * The card is green when the user is checked in and red otherwise.
  */
 @Composable
 private fun StatusAndSiteCard(
@@ -353,7 +298,6 @@ private fun StatusAndSiteCard(
                 color = textColor
             )
 
-            // Site name + address right under status
             Text(
                 text = currentSite.name,
                 style = MaterialTheme.typography.labelMedium,
@@ -377,8 +321,7 @@ private fun StatusAndSiteCard(
 }
 
 /**
- * Real Google Maps preview card centered on the current site.
- * Now also optionally shows the blue "my location" dot when permission is granted.
+ * Google Maps preview card centered on the current site.
  */
 @Composable
 private fun MapPreviewCard(
@@ -386,19 +329,14 @@ private fun MapPreviewCard(
     hasLocationPermission: Boolean
 ) {
     val context = LocalContext.current
-
-    // Position for this site
     val siteLatLng = LatLng(currentSite.latitude, currentSite.longitude)
 
-    // Remember a single MapView instance
     val mapView = remember {
         MapView(context).apply {
-            // No savedInstanceState for preview
             onCreate(null)
         }
     }
 
-    // Handle basic lifecycle so the map actually shows
     DisposableEffect(Unit) {
         mapView.onStart()
         mapView.onResume()
@@ -410,7 +348,6 @@ private fun MapPreviewCard(
         }
     }
 
-    // Configure the camera + marker when the composable is shown
     LaunchedEffect(siteLatLng, hasLocationPermission) {
         mapView.getMapAsync { googleMap ->
             googleMap.uiSettings.apply {
@@ -421,7 +358,7 @@ private fun MapPreviewCard(
                 try {
                     googleMap.isMyLocationEnabled = true
                 } catch (_: SecurityException) {
-                    // ignore – shouldn't happen if permission flag is correct
+                    // Ignore, just show marker.
                 }
             }
 
@@ -453,12 +390,14 @@ private fun MapPreviewCard(
     }
 }
 
+/**
+ * Weather summary card for the current location.
+ */
 @Composable
 private fun WeatherSummaryCard(
     weatherState: WeatherUiState,
     tempSuffix: String
 ) {
-    // Pick colors based on current description
     val style = resolveWeatherStyle(weatherState.description)
 
     Card(
@@ -538,7 +477,6 @@ private fun ForecastRowCard(
                     )
                 }
 
-                // If less than 3 items, fill remaining space
                 repeat(3 - firstThree.size) {
                     Spacer(
                         modifier = Modifier
@@ -551,6 +489,9 @@ private fun ForecastRowCard(
     }
 }
 
+/**
+ * Small forecast tile showing time, temperature, and description.
+ */
 @Composable
 private fun ForecastMiniCard(
     item: ForecastItemUi,
@@ -572,7 +513,7 @@ private fun ForecastMiniCard(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Text(
-                text = item.timeLabel,        // "In 3h", "In 6h", etc.
+                text = item.timeLabel,
                 style = MaterialTheme.typography.labelSmall,
                 color = style.chipText
             )
@@ -605,19 +546,20 @@ private data class WeatherCardStyle(
     val chipText: Color
 )
 
+/**
+ * Derives a simple color style for weather cards based on a description string.
+ */
 private fun resolveWeatherStyle(description: String?): WeatherCardStyle {
     val d = description?.lowercase() ?: ""
 
     return when {
-        // Rainy
         "rain" in d || "drizzle" in d || "shower" in d -> WeatherCardStyle(
-            background = Color(0xFF0F172A),      // dark navy
-            text = Color(0xFFE0F2FE),           // very light blue
-            chipBackground = Color(0xFF1D4ED8), // blue chip
+            background = Color(0xFF0F172A),
+            text = Color(0xFFE0F2FE),
+            chipBackground = Color(0xFF1D4ED8),
             chipText = Color(0xFFEFF6FF)
         )
 
-        // Snow / sleet
         "snow" in d || "sleet" in d -> WeatherCardStyle(
             background = Color(0xFF0F172A),
             text = Color(0xFFE5F4FF),
@@ -625,23 +567,20 @@ private fun resolveWeatherStyle(description: String?): WeatherCardStyle {
             chipText = Color(0xFF02131F)
         )
 
-        // Cloudy / overcast
         "cloud" in d || "overcast" in d -> WeatherCardStyle(
-            background = Color(0xFF111827),      // dark grey
-            text = Color(0xFFE5E7EB),           // light grey
-            chipBackground = Color(0xFF374151), // mid grey chip
+            background = Color(0xFF111827),
+            text = Color(0xFFE5E7EB),
+            chipBackground = Color(0xFF374151),
             chipText = Color(0xFFF9FAFB)
         )
 
-        // Clear / sunny
         "clear" in d || "sun" in d -> WeatherCardStyle(
-            background = Color(0xFF1F2937),      // slightly warm dark
-            text = Color(0xFFFDE68A),           // warm yellow
-            chipBackground = Color(0xFFF59E0B), // orange chip
+            background = Color(0xFF1F2937),
+            text = Color(0xFFFDE68A),
+            chipBackground = Color(0xFFF59E0B),
             chipText = Color(0xFF1F2937)
         )
 
-        // Fallback
         else -> WeatherCardStyle(
             background = Color(0xFF1F2937),
             text = Color(0xFFE5E7EB),

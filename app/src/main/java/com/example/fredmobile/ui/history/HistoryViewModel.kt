@@ -11,9 +11,12 @@ import com.example.fredmobile.model.firestore.Incident
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel that loads check-in and incident history from Firestore.
+ * Immutable UI state for the history screen.
  *
- * Used by the History screen for PM3 (data persistence + CRUD).
+ * @param isLoading True while history data is being loaded.
+ * @param checkIns List of check-in records for the current user.
+ * @param incidents List of incident records for the current user.
+ * @param errorMessage Error message to display if loading fails, or null if none.
  */
 data class HistoryUiState(
     val isLoading: Boolean = false,
@@ -22,10 +25,17 @@ data class HistoryUiState(
     val errorMessage: String? = null
 )
 
+/**
+ * ViewModel that loads and manages check-in and incident history
+ * from [FirestoreRepository] for the currently authenticated user.
+ */
 class HistoryViewModel(
     private val repo: FirestoreRepository = FirestoreRepository()
 ) : ViewModel() {
 
+    /**
+     * Current UI state for the history screen.
+     */
     var uiState by mutableStateOf(HistoryUiState())
         private set
 
@@ -33,6 +43,9 @@ class HistoryViewModel(
         refresh()
     }
 
+    /**
+     * Reloads check-in and incident history from Firestore and updates the UI state.
+     */
     fun refresh() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, errorMessage = null)
@@ -53,23 +66,35 @@ class HistoryViewModel(
         }
     }
 
+    /**
+     * Deletes a check-in by its ID and refreshes the history lists.
+     *
+     * @param id Firestore document ID of the check-in to delete.
+     */
     fun deleteCheckIn(id: String) {
         viewModelScope.launch {
             try {
                 repo.deleteCheckIn(id)
-                refresh() // reload list after delete
+                refresh()
             } catch (_: Exception) {
-                // you can add error UI later if you want
+                // Optional: handle delete errors in the UI if needed.
             }
         }
     }
 
+    /**
+     * Deletes an incident by its ID and refreshes the history lists.
+     *
+     * @param id Firestore document ID of the incident to delete.
+     */
     fun deleteIncident(id: String) {
         viewModelScope.launch {
             try {
                 repo.deleteIncident(id)
                 refresh()
-            } catch (_: Exception) { }
+            } catch (_: Exception) {
+                // Optional: handle delete errors in the UI if needed.
+            }
         }
     }
 }

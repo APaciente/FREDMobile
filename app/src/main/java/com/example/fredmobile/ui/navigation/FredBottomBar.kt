@@ -16,12 +16,26 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.example.fredmobile.R
 
+/**
+ * Simple model for an item in the bottom navigation bar.
+ *
+ * @param route Navigation route associated with this item.
+ * @param label Text label shown under the icon.
+ * @param iconRes Drawable resource ID for the icon.
+ */
 private data class BottomNavItem(
     val route: String,
     val label: String,
     val iconRes: Int
 )
 
+/**
+ * Bottom navigation bar for the main app screens.
+ *
+ * Displays navigation items for Home, Incident, Sites, and History.
+ * Uses the provided [NavController] to navigate between destinations
+ * and preserves state when switching tabs.
+ */
 @Composable
 fun FredBottomBar(navController: NavController) {
     val items = listOf(
@@ -42,7 +56,7 @@ fun FredBottomBar(navController: NavController) {
             NavigationBarItem(
                 selected = selected,
                 onClick = {
-                    // 👇 If already on this tab, do nothing – no “flash” or reload
+                    // Avoid re-navigating when the current tab is already selected.
                     if (!selected) {
                         navController.navigate(item.route) {
                             popUpTo(navController.graph.findStartDestination().id) {

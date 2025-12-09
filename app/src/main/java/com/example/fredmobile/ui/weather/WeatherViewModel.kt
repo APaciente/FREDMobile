@@ -9,18 +9,10 @@ import com.example.fredmobile.data.remote.WeatherRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel that loads weather, forecast, and air quality for a site.
+ * ViewModel that loads current weather, forecast, and air quality for a location.
  *
- * Milestone 2:
- *  - Called from Check-In screen.
- *  - Uses three endpoints:
- *      1) Current weather
- *      2) Forecast
- *      3) Air quality (AQI)
- *
- * Milestone 3:
- *  - Supports units ("metric" or "imperial") based on Settings.
- *  - Exposes a small forecast strip via [forecastItems].
+ * Uses [WeatherRepository] to call the OpenWeather API and exposes a [WeatherUiState]
+ * for UI layers such as the Check-In screen.
  */
 class WeatherViewModel(
     private val repo: WeatherRepository = WeatherRepository()
@@ -29,6 +21,13 @@ class WeatherViewModel(
     var uiState by mutableStateOf(WeatherUiState())
         private set
 
+    /**
+     * Fetches weather data for the given coordinates.
+     *
+     * @param lat latitude of the location.
+     * @param lon longitude of the location.
+     * @param units unit system for temperature ("metric" or "imperial").
+     */
     fun loadWeatherForSite(lat: Double, lon: Double, units: String) {
         uiState = uiState.copy(isLoading = true, errorMessage = null)
 
@@ -57,9 +56,9 @@ class WeatherViewModel(
                     ?.description
                     ?.replaceFirstChar { it.uppercase() }
 
-                // Build a small forecast strip (first 5 3-hour slots)
+                // Build a short forecast strip (first 5 three-hour slots)
                 val forecastItems = forecast.list
-                    .take(5) // 5 upcoming time slots
+                    .take(5)
                     .mapIndexed { index, item ->
                         val hoursAhead = (index + 1) * 3
                         val label = "In ${hoursAhead}h"

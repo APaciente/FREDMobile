@@ -1,27 +1,34 @@
 package com.example.fredmobile.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.FileDownload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fredmobile.model.firestore.CheckIn
 import com.example.fredmobile.model.firestore.Incident
 import com.example.fredmobile.ui.history.HistoryViewModel
-import com.example.fredmobile.util.toReadableString
 import com.example.fredmobile.ui.navigation.FredBottomBar
+import com.example.fredmobile.util.toReadableString
 
 /**
- * History screen showing past check-ins and incidents.
+ * Screen that displays the user's history of check-ins and incidents.
  *
- * PM1: used fake in-memory data.
- * PM3: now backed by Firestore via [HistoryViewModel].
+ * Uses [HistoryViewModel] to load data from Firestore and presents it
+ * in two tabs: one for check-ins and one for incidents.
+ *
+ * Also lets the user export the current tab to a CSV file
+ * that can be opened in Excel or Google Sheets.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,6 +38,31 @@ fun HistoryScreen(
 ) {
     val uiState = historyViewModel.uiState
     var selectedTab by remember { mutableStateOf(0) } // 0 = Check-ins, 1 = Incidents
+    val context = LocalContext.current
+
+    // Launcher for "Create document" using Storage Access Framework.
+    // We use it to let the user pick the filename and destination.
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+
+        // Build CSV based on which tab is active
+        val csv = if (selectedTab == 0) {
+            buildCheckInsCsv(uiState.checkIns)
+        } else {
+            buildIncidentsCsv(uiState.incidents)
+        }
+
+        try {
+            context.contentResolver.openOutputStream(uri)?.use { out ->
+                out.write(csv.toByteArray())
+            }
+        } catch (e: Exception) {
+            // For now we just log or swallow; you could add a Snackbar later.
+            e.printStackTrace()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -41,6 +73,24 @@ fun HistoryScreen(
                         Icon(
                             imageVector = Icons.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            // Suggest a file name depending on the active tab
+                            val suggestedName = if (selectedTab == 0) {
+                                "checkins.csv"
+                            } else {
+                                "incidents.csv"
+                            }
+                            exportLauncher.launch(suggestedName)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.FileDownload,
+                            contentDescription = "Export CSV"
                         )
                     }
                 }
@@ -56,8 +106,7 @@ fun HistoryScreen(
                 .padding(16.dp)
                 .fillMaxSize()
         ) {
-
-            // Tabs
+            // Tabs for switching between check-ins and incidents
             TabRow(selectedTabIndex = selectedTab) {
                 Tab(
                     selected = selectedTab == 0,
@@ -73,30 +122,39 @@ fun HistoryScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            if (uiState.isLoading) {
-                CircularProgressIndicator()
-            } else if (uiState.errorMessage != null) {
-                Text(
-                    text = uiState.errorMessage,
-                    color = MaterialTheme.colorScheme.error
-                )
-            } else {
-                if (selectedTab == 0) {
-                    CheckInHistoryList(
-                        checkIns = uiState.checkIns,
-                        onDelete = { id -> historyViewModel.deleteCheckIn(id) }
+            when {
+                uiState.isLoading -> {
+                    CircularProgressIndicator()
+                }
+
+                uiState.errorMessage != null -> {
+                    Text(
+                        text = uiState.errorMessage,
+                        color = MaterialTheme.colorScheme.error
                     )
-                } else {
-                    IncidentHistoryList(
-                        incidents = uiState.incidents,
-                        onDelete = { id -> historyViewModel.deleteIncident(id) }
-                    )
+                }
+
+                else -> {
+                    if (selectedTab == 0) {
+                        CheckInHistoryList(
+                            checkIns = uiState.checkIns,
+                            onDelete = { id -> historyViewModel.deleteCheckIn(id) }
+                        )
+                    } else {
+                        IncidentHistoryList(
+                            incidents = uiState.incidents,
+                            onDelete = { id -> historyViewModel.deleteIncident(id) }
+                        )
+                    }
                 }
             }
         }
     }
 }
 
+/**
+ * List of past check-ins with basic details and a delete action.
+ */
 @Composable
 private fun CheckInHistoryList(
     checkIns: List<CheckIn>,
@@ -151,6 +209,9 @@ private fun CheckInHistoryList(
     }
 }
 
+/**
+ * List of reported incidents with details and a delete action.
+ */
 @Composable
 private fun IncidentHistoryList(
     incidents: List<Incident>,
@@ -204,3 +265,39 @@ private fun IncidentHistoryList(
         }
     }
 }
+
+/* ---------- CSV helpers ---------- */
+
+private fun buildCheckInsCsv(checkIns: List<CheckIn>): String {
+    if (checkIns.isEmpty()) return "Site,Status,In,Out\n"
+
+    val header = "Site,Status,In,Out\n"
+    val rows = checkIns.joinToString("\n") { ci ->
+        val site = ci.siteName.csvSafe()
+        val status = ci.status.csvSafe()
+        val inTime = ci.inTime.toReadableString().csvSafe()
+        val outTime = ci.outTime.toReadableString().csvSafe()
+        "$site,$status,$inTime,$outTime"
+    }
+    return header + rows + "\n"
+}
+
+private fun buildIncidentsCsv(incidents: List<Incident>): String {
+    if (incidents.isEmpty()) return "Site,Severity,Description,Reported\n"
+
+    val header = "Site,Severity,Description,Reported\n"
+    val rows = incidents.joinToString("\n") { inc ->
+        val site = inc.siteName.csvSafe()
+        val severity = inc.severity.csvSafe()
+        val desc = inc.description.csvSafe()
+        val created = inc.createdAt.toReadableString().csvSafe()
+        "$site,$severity,$desc,$created"
+    }
+    return header + rows + "\n"
+}
+
+/**
+ * Simple CSV escaping: wrap value in quotes and escape any quotes inside.
+ */
+private fun String.csvSafe(): String =
+    "\"" + this.replace("\"", "\"\"") + "\""

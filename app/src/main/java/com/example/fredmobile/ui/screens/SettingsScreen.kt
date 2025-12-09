@@ -5,6 +5,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -15,9 +17,10 @@ import com.example.fredmobile.ui.settings.SettingsViewModel
 import com.example.fredmobile.ui.settings.SettingsViewModelFactory
 
 /**
- * Settings and preferences screen for FRED.
- * Milestone 1: local-only.
- * Milestone 3: now backed by DataStore via SettingsViewModel.
+ * Settings and preferences screen for FRED Mobile.
+ *
+ * Uses [SettingsViewModel] to read and update user preferences such as
+ * notifications, dark mode, accessibility options, and weather units.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,7 +30,7 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
 
-    // Get SettingsViewModel with factory (so it has a Context for DataStore)
+    // Get SettingsViewModel with a factory so it can access DataStore via Context.
     val viewModel: SettingsViewModel = androidx.lifecycle.viewmodel.compose.viewModel(
         factory = SettingsViewModelFactory(context)
     )
@@ -38,11 +41,19 @@ fun SettingsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Settings") }
+                title = { Text("Settings") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(
+                            imageVector = Icons.Filled.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                }
             )
         },
         bottomBar = {
-            // Persistent sign-out at the bottom
+            // Sign-out button pinned to the bottom of the screen.
             Surface(shadowElevation = 4.dp) {
                 Box(
                     modifier = Modifier
@@ -74,7 +85,6 @@ fun SettingsScreen(
                 .verticalScroll(scrollState),
             verticalArrangement = Arrangement.spacedBy(20.dp)
         ) {
-
             // GENERAL SETTINGS
             Text(
                 text = "General Preferences",
@@ -88,6 +98,12 @@ fun SettingsScreen(
                 onCheckedChange = { viewModel.setNotificationsEnabled(it) }
             )
 
+            // ACCESSIBILITY
+            Text(
+                text = "Accessibility",
+                style = MaterialTheme.typography.titleMedium
+            )
+
             SettingsSwitchItem(
                 title = "Dark mode",
                 subtitle = "Use a darker color scheme to reduce eye strain.",
@@ -95,15 +111,10 @@ fun SettingsScreen(
                 onCheckedChange = { viewModel.setDarkModeEnabled(it) }
             )
 
-            // SAFETY SETTINGS
-            Text(
-                text = "Safety Features",
-                style = MaterialTheme.typography.titleMedium
-            )
-
             SettingsSwitchItem(
-                title = "Auto Check-In (placeholder)",
-                subtitle = "Allow app to check you in automatically when entering a site geofence.",
+                title = "Larger text",
+                subtitle = "Increase text size across most screens to make content easier to read.",
+                // Reuse autoCheckInEnabled flag for now as the 'larger text' setting.
                 checked = uiState.settings.autoCheckInEnabled,
                 onCheckedChange = { viewModel.setAutoCheckInEnabled(it) }
             )
@@ -122,7 +133,7 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.height(80.dp))
 
             Text(
-                text = "Settings are saved with DataStore (Milestone 3).",
+                text = "Settings are saved locally and restored across app launches.",
                 style = MaterialTheme.typography.bodySmall
             )
         }
@@ -130,7 +141,7 @@ fun SettingsScreen(
 }
 
 /**
- * A reusable switch item for settings.
+ * Card-based row with a title, subtitle, and a trailing [Switch].
  */
 @Composable
 fun SettingsSwitchItem(
@@ -166,7 +177,7 @@ fun SettingsSwitchItem(
 }
 
 /**
- * Dropdown menu for selecting weather unit.
+ * Dropdown component for selecting the preferred weather unit.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

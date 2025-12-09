@@ -10,27 +10,37 @@ import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
-
 /**
- * Repository wrapping Firestore access for check-ins and incidents.
+ * Repository that wraps Firestore access for check-ins and incidents.
  *
- * PM3 goal: demonstrate full CRUD using authenticated user data.
+ * All operations are scoped to the currently authenticated user and
+ * expose suspend functions for use with coroutines.
  */
 class FirestoreRepository(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
 
-    // storage lives here, as a property:
     private val storage = FirebaseStorage.getInstance()
 
-    // Convenience to get current UID or throw
+    /**
+     * Convenience property to access the current user's UID.
+     *
+     * @throws IllegalStateException if there is no logged-in user.
+     */
     private val uid: String
         get() = auth.currentUser?.uid
             ?: throw IllegalStateException("No logged-in user")
 
     // ---- CHECK-INS ----
 
+    /**
+     * Creates a new check-in document for the current user.
+     *
+     * @param siteId Identifier of the site where the user is checking in.
+     * @param siteName Human-readable name of the site.
+     * @return The created [CheckIn] model.
+     */
     suspend fun createCheckIn(siteId: String, siteName: String): CheckIn {
         val ref = db.collection("users")
             .document(uid)
@@ -49,6 +59,11 @@ class FirestoreRepository(
         return checkIn
     }
 
+    /**
+     * Marks a check-in as completed by setting an out time and status.
+     *
+     * @param checkInId ID of the check-in document to update.
+     */
     suspend fun completeCheckIn(checkInId: String) {
         val ref = db.collection("users")
             .document(uid)
@@ -63,6 +78,11 @@ class FirestoreRepository(
         ).await()
     }
 
+    /**
+     * Deletes a check-in document.
+     *
+     * @param checkInId ID of the check-in document to delete.
+     */
     suspend fun deleteCheckIn(checkInId: String) {
         db.collection("users")
             .document(uid)
@@ -72,6 +92,9 @@ class FirestoreRepository(
             .await()
     }
 
+    /**
+     * Returns all check-ins for the current user, ordered by in time.
+     */
     suspend fun getCheckInsOnce(): List<CheckIn> {
         val snapshot = db.collection("users")
             .document(uid)
@@ -85,26 +108,37 @@ class FirestoreRepository(
 
     // ---- INCIDENTS ----
 
+    /**
+     * Creates a new incident for the current user and optionally uploads
+     * an associated photo to Firebase Storage.
+     *
+     * @param siteId Identifier of the site where the incident occurred.
+     * @param siteName Human-readable name of the site.
+     * @param severity Incident severity level.
+     * @param description Text description of what happened.
+     * @param localPhotoUri Optional local URI for a photo to attach; if provided,
+     *                      the image is uploaded and the download URL is stored
+     *                      in the incident document.
+     * @return The created [Incident] model.
+     */
     suspend fun createIncidentWithOptionalPhoto(
         siteId: String,
         siteName: String,
         severity: String,
         description: String,
-        localPhotoUri: String?   // can be null
+        localPhotoUri: String?
     ): Incident {
         val ref = db.collection("users")
             .document(uid)
             .collection("incidents")
             .document()
 
-        // 1) Upload photo if we have one
         val photoUrl: String? = if (!localPhotoUri.isNullOrBlank()) {
             uploadIncidentPhoto(uid, localPhotoUri)
         } else {
             null
         }
 
-        // 2) Build incident
         val incident = Incident(
             id = ref.id,
             siteId = siteId,
@@ -119,6 +153,13 @@ class FirestoreRepository(
         return incident
     }
 
+    /**
+     * Uploads an incident photo to Firebase Storage and returns its download URL.
+     *
+     * @param uid UID of the user the photo belongs to.
+     * @param localPhotoUri Local URI of the image on the device.
+     * @return Public download URL of the uploaded image.
+     */
     private suspend fun uploadIncidentPhoto(
         uid: String,
         localPhotoUri: String
@@ -136,6 +177,11 @@ class FirestoreRepository(
         return ref.downloadUrl.await().toString()
     }
 
+    /**
+     * Deletes an incident document.
+     *
+     * @param incidentId ID of the incident document to delete.
+     */
     suspend fun deleteIncident(incidentId: String) {
         db.collection("users")
             .document(uid)
@@ -145,6 +191,9 @@ class FirestoreRepository(
             .await()
     }
 
+    /**
+     * Returns all incidents for the current user, ordered by creation time.
+     */
     suspend fun getIncidentsOnce(): List<Incident> {
         val snapshot = db.collection("users")
             .document(uid)

@@ -1,25 +1,39 @@
 package com.example.fredmobile.model.weather
 
 /**
- * Minimal model for OpenWeather "air_pollution" endpoint.
- * We only care about the AQI (1 to 5).
+ * Response model for the OpenWeather "air_pollution" endpoint.
+ *
+ * Only the fields needed by the app are included. The API returns
+ * a list of AQI readings, where the first item represents the
+ * current air quality at the requested coordinates.
+ *
+ * @param list List of air quality readings returned by the API.
  */
 data class AirQualityResponse(
     val list: List<AirQualityEntry>
 )
 
 /**
- * Wrapper for the AQI value.
+ * Entry containing the main AQI value.
  *
- * Example:
- *   "list": [
- *     { "main": { "aqi": 2 } }
- *   ]
+ * @param main Container for the AQI integer value.
  */
 data class AirQualityEntry(
     val main: AirQualityMain
 )
 
+/**
+ * Represents the numeric Air Quality Index (AQI) value.
+ *
+ * AQI scale used by OpenWeather:
+ * 1 = Good
+ * 2 = Fair
+ * 3 = Moderate
+ * 4 = Poor
+ * 5 = Very Poor
+ *
+ * @param aqi Numeric AQI value from 1 to 5.
+ */
 data class AirQualityMain(
-    val aqi: Int   // 1 = Good, 5 = Very Poor
+    val aqi: Int
 )

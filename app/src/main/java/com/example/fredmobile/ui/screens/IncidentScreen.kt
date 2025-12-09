@@ -19,17 +19,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.example.fredmobile.ui.incident.IncidentViewModel
+import com.example.fredmobile.ui.location.LocationViewModel
 import com.example.fredmobile.ui.navigation.FredBottomBar
 import kotlinx.coroutines.launch
 
 /**
- * Incident report screen.
- * PM1: local-only form with fake submit action.
- * PM3: now saves incidents to Firestore via [IncidentViewModel].
+ * Screen for reporting safety incidents at the current site.
  *
- * Attachments:
- *  - Lets the user pick a photo from the gallery.
- *  - ViewModel can upload this to Firebase Storage and store the link.
+ * Captures severity, a text description, and an optional photo attachment,
+ * then delegates saving to [IncidentViewModel].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,13 +35,14 @@ fun IncidentScreen(
     navController: NavController,
     siteId: String = "demo-site-id",
     siteName: String = "Current Site",
-    incidentViewModel: IncidentViewModel = viewModel()
+    incidentViewModel: IncidentViewModel = viewModel(),
+    locationViewModel: LocationViewModel
 ) {
     var description by remember { mutableStateOf(TextFieldValue("")) }
     var severity by remember { mutableStateOf("Medium") }
     var includePhoto by remember { mutableStateOf(false) }
 
-    // Store the selected photo URI as a String so it survives config changes
+    // Store the selected photo URI as a String so it survives configuration changes.
     var photoUri by rememberSaveable { mutableStateOf<String?>(null) }
 
     val snackbarHostState = remember { SnackbarHostState() }
@@ -52,6 +51,16 @@ fun IncidentScreen(
 
     val isSaving = incidentViewModel.isSaving
     val errorMessage = incidentViewModel.errorMessage
+
+    val locationState = locationViewModel.uiState
+
+    // Use current address if we have one, otherwise fall back to the passed-in siteName
+    val resolvedSiteName = locationState.address ?: siteName
+    val resolvedSiteId = if (locationState.lastLocation != null) {
+        "current_location"
+    } else {
+        siteId
+    }
 
     // Gallery picker launcher
     val pickImageLauncher = rememberLauncherForActivityResult(
@@ -80,13 +89,13 @@ fun IncidentScreen(
             FredBottomBar(navController = navController)
         }
     ) { innerPadding ->
-        // OUTER COLUMN: content (scrollable) + fixed bottom area with button
+        // Outer column: scrollable content + fixed submit area
         Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize()
         ) {
-            // SCROLLABLE CONTENT
+            // Scrollable content
             Column(
                 modifier = Modifier
                     .weight(1f)
@@ -94,13 +103,17 @@ fun IncidentScreen(
                     .verticalScroll(scrollState),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-
                 Text(
                     text = "Use this form to record safety incidents at your current site.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                // SEVERITY
+                Text(
+                    text = "Reporting from: $resolvedSiteName",
+                    style = MaterialTheme.typography.bodySmall
+                )
+
+                // Severity
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -121,7 +134,7 @@ fun IncidentScreen(
                     }
                 }
 
-                // DESCRIPTION
+                // Description
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -140,7 +153,9 @@ fun IncidentScreen(
                             value = description,
                             onValueChange = { description = it },
                             label = { Text("What happened?") },
-                            placeholder = { Text("Describe the incident, location, and any injuries.") },
+                            placeholder = {
+                                Text("Describe the incident, location, and any injuries.")
+                            },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .heightIn(min = 120.dp),
@@ -149,7 +164,7 @@ fun IncidentScreen(
                     }
                 }
 
-                // ATTACHMENTS (smaller card)
+                // Attachments (smaller card)
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
@@ -205,7 +220,7 @@ fun IncidentScreen(
                         }
 
                         Text(
-                            text = "If you attach a photo, it will be uploaded with this incident record.",
+                            text = "If you attach a photo, it will be saved with this incident record.",
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
@@ -214,7 +229,7 @@ fun IncidentScreen(
                 Spacer(modifier = Modifier.height(8.dp))
             }
 
-            // FIXED BOTTOM AREA (button + error text)
+            // Fixed bottom area (button + error text)
             Column(
                 modifier = Modifier
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -229,11 +244,11 @@ fun IncidentScreen(
                             }
                         } else {
                             incidentViewModel.submitIncident(
-                                siteId = siteId,
-                                siteName = siteName,
+                                siteId = resolvedSiteId,
+                                siteName = resolvedSiteName,
                                 severity = severity,
                                 description = description.text,
-                                photoUri = photoUri,   // ✅ pass photoUri into VM
+                                photoUri = photoUri,
                                 onSuccess = {
                                     scope.launch {
                                         snackbarHostState.showSnackbar(
@@ -275,7 +290,7 @@ fun IncidentScreen(
 }
 
 /**
- * Simple severity selector using Filter chips.
+ * Simple severity selector built from Filter chips.
  */
 @Composable
 private fun SeveritySelector(

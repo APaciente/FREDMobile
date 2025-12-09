@@ -1,20 +1,28 @@
 package com.example.fredmobile.model.weather
 
 /**
- * Minimal model for OpenWeather "forecast" endpoint.
- * We keep a list of time steps with temp + description.
+ * Response model for the OpenWeather "forecast" endpoint.
+ *
+ * Contains a list of forecast entries, each representing a 3-hour
+ * time step with temperature and weather condition details.
+ *
+ * @param list List of forecast items returned by the API.
  */
 data class ForecastResponse(
     val list: List<ForecastItem>
 )
 
 /**
- * Single forecast item (3-hour step).
+ * Represents a single 3-hour forecast entry.
  *
- * Example JSON field names:
- *   "dt_txt": "2025-11-25 12:00:00"
- *   "main": { "temp": 3.5 }
- *   "weather": [ { "description": "light snow" } ]
+ * Example fields returned by the API:
+ * - "dt_txt": timestamp as a human-readable string
+ * - "main": temperature data
+ * - "weather": list of condition descriptions
+ *
+ * @param dt_txt Date/time of the forecast in string form.
+ * @param main Main weather metrics, such as temperature.
+ * @param weather List of descriptive weather conditions.
  */
 data class ForecastItem(
     val dt_txt: String,

@@ -4,10 +4,11 @@ import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 
 /**
- * Repository that provides weather data to UI screens.
- * Uses Retrofit and exposes suspend functions.
+ * Repository that provides weather data to the rest of the app.
  *
- * Now supports units: "metric" (Celsius) or "imperial" (Fahrenheit).
+ * It configures Retrofit with the OpenWeather base URL and exposes
+ * coroutine-friendly functions for fetching current weather, forecasts,
+ * air quality, and alerts.
  */
 class WeatherRepository {
 
@@ -17,9 +18,17 @@ class WeatherRepository {
         .build()
         .create(WeatherApiService::class.java)
 
-    // You can move this to local.properties / BuildConfig later if needed
+    // In a production app, this key should be provided via secure config
+    // (for example BuildConfig or remote configuration), not hard-coded.
     private val apiKey = "c4394605ecdb75083cd9926c61dce9d4"
 
+    /**
+     * Fetches current weather for the given coordinates.
+     *
+     * @param lat Latitude of the location.
+     * @param lon Longitude of the location.
+     * @param units Unit system ("metric" for Celsius, "imperial" for Fahrenheit).
+     */
     suspend fun getCurrentWeather(lat: Double, lon: Double, units: String) =
         api.getCurrentWeather(
             lat = lat,
@@ -28,6 +37,13 @@ class WeatherRepository {
             units = units
         )
 
+    /**
+     * Fetches the forecast for the given coordinates.
+     *
+     * @param lat Latitude of the location.
+     * @param lon Longitude of the location.
+     * @param units Unit system ("metric" for Celsius, "imperial" for Fahrenheit).
+     */
     suspend fun getForecast(lat: Double, lon: Double, units: String) =
         api.getForecast(
             lat = lat,
@@ -36,9 +52,21 @@ class WeatherRepository {
             units = units
         )
 
+    /**
+     * Fetches air quality information for the given coordinates.
+     *
+     * @param lat Latitude of the location.
+     * @param lon Longitude of the location.
+     */
     suspend fun getAirQuality(lat: Double, lon: Double) =
         api.getAirQuality(lat, lon, apiKey)
 
+    /**
+     * Fetches weather alerts for the given coordinates.
+     *
+     * @param lat Latitude of the location.
+     * @param lon Longitude of the location.
+     */
     suspend fun getAlerts(lat: Double, lon: Double) =
         api.getWeatherAlerts(lat, lon, apiKey)
 }

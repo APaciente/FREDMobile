@@ -1,7 +1,7 @@
 package com.example.fredmobile.ui.weather
 
 /**
- * Simple UI model for weather + forecast.
+ * UI state holder for current weather, air quality, and short-term forecast.
  */
 data class WeatherUiState(
     val isLoading: Boolean = false,
@@ -15,10 +15,14 @@ data class WeatherUiState(
 )
 
 /**
- * One “slot” in the short forecast strip on the Check-In screen.
+ * One entry in the short forecast strip shown on the Check-In screen.
+ *
+ * @param timeLabel label such as "In 3h" or "In 6h".
+ * @param temp forecast temperature at that time.
+ * @param description short text description of conditions.
  */
 data class ForecastItemUi(
-    val timeLabel: String,          // e.g. "3 PM"
+    val timeLabel: String,
     val temp: Double?,
     val description: String?
 )

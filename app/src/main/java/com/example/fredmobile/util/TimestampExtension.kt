@@ -5,7 +5,10 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 
 /**
- * Extension to show Firestore Timestamps in a simple readable way.
+ * Converts a Firestore [Timestamp] to a simple, human-readable string.
+ *
+ * Format: `yyyy-MM-dd HH:mm` in the current locale.
+ * Returns "-" if the timestamp is null.
  */
 fun Timestamp?.toReadableString(): String {
     if (this == null) return "-"

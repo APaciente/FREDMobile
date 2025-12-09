@@ -11,11 +11,22 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+/**
+ * UI state for the settings screen.
+ *
+ * Wraps the current [Settings] and a simple loading flag while values
+ * are being read from DataStore.
+ */
 data class SettingsUiState(
     val isLoading: Boolean = true,
     val settings: Settings = Settings()
 )
 
+/**
+ * ViewModel that exposes user settings and updates them via [SettingsRepository].
+ *
+ * Observes the DataStore-backed flow and provides a [SettingsUiState] for the UI.
+ */
 class SettingsViewModel(
     private val repo: SettingsRepository
 ) : ViewModel() {
@@ -24,7 +35,7 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = _uiState
 
     init {
-        // Start listening to changes from DataStore
+        // Observe changes from DataStore and push them into the UI state.
         viewModelScope.launch {
             repo.settingsFlow.collectLatest { settings ->
                 _uiState.value = SettingsUiState(
@@ -61,7 +72,9 @@ class SettingsViewModel(
 }
 
 /**
- * Simple factory so we can pass Context to SettingsRepository without Hilt.
+ * [ViewModelProvider.Factory] for creating [SettingsViewModel] instances.
+ *
+ * Provides a [SettingsRepository] built from the given [Context].
  */
 class SettingsViewModelFactory(
     private val context: Context

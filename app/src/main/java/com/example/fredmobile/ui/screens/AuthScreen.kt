@@ -21,12 +21,12 @@ import com.google.android.gms.auth.api.signin.GoogleSignInOptions
 import com.google.android.gms.common.api.ApiException
 
 /**
- * Authentication screen for FRED.
+ * Authentication screen for the app.
  *
- * Milestone 3:
- *  - Email/password sign-in and registration
- *  - Google Sign-In (second provider)
- *  - Navigates to Home when a user is authenticated.
+ * Handles:
+ * - Email/password sign-in and registration
+ * - Google Sign-In as a second provider
+ * - Navigation to the home screen once a user is authenticated
  */
 @Composable
 fun AuthScreen(
@@ -37,7 +37,7 @@ fun AuthScreen(
     val context = LocalContext.current
     val webClientId = stringResource(id = R.string.default_web_client_id)
 
-    // Google Sign-In config
+    // Google Sign-In configuration
     val googleSignInClient = remember(webClientId) {
         val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestIdToken(webClientId)
@@ -46,7 +46,7 @@ fun AuthScreen(
         GoogleSignIn.getClient(context, gso)
     }
 
-    // Launcher for Google sign-in activity
+    // Launcher for the Google sign-in activity
     val googleLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
@@ -70,7 +70,7 @@ fun AuthScreen(
         }
     }
 
-    // Navigate away when user is authenticated
+    // Navigate to the home screen when a user becomes authenticated
     LaunchedEffect(uiState.currentUser) {
         if (uiState.currentUser != null) {
             navController.navigate(Routes.HOME) {
@@ -95,6 +95,12 @@ fun AuthScreen(
     )
 }
 
+/**
+ * Stateless authentication UI content.
+ *
+ * Renders the sign-in / register form and delegates all actions to
+ * the provided callbacks so the ViewModel owns the state.
+ */
 @Composable
 private fun AuthContent(
     uiState: AuthUiState,

@@ -9,18 +9,37 @@ import com.example.fredmobile.data.FirestoreRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel for submitting incidents to Firestore (PM3).
+ * ViewModel responsible for submitting incidents to [FirestoreRepository].
+ *
+ * Exposes simple state flags for saving progress and error messages so
+ * the UI can show loading indicators and feedback to the user.
  */
 class IncidentViewModel(
     private val repo: FirestoreRepository = FirestoreRepository()
 ) : ViewModel() {
 
+    /**
+     * True while an incident is being saved.
+     */
     var isSaving by mutableStateOf(false)
         private set
 
+    /**
+     * Latest error message to display in the UI, or null if there is no error.
+     */
     var errorMessage by mutableStateOf<String?>(null)
         private set
 
+    /**
+     * Submits a new incident and optionally includes a photo reference.
+     *
+     * @param siteId Identifier of the site where the incident occurred.
+     * @param siteName Human-readable name of the site.
+     * @param severity Incident severity level.
+     * @param description Text description of the incident.
+     * @param photoUri Optional local URI of a photo to attach to the incident.
+     * @param onSuccess Callback invoked after the incident is successfully saved.
+     */
     fun submitIncident(
         siteId: String,
         siteName: String,

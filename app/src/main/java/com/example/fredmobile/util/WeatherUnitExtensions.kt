@@ -1,13 +1,17 @@
 package com.example.fredmobile.util
 
 /**
- * Convert the user-facing weather unit string to OpenWeather units.
+ * Converts a user-facing weather unit label to the OpenWeather units value.
+ *
+ * @return "imperial" for "Fahrenheit", otherwise "metric".
  */
 fun String.toOpenWeatherUnits(): String =
     if (this == "Fahrenheit") "imperial" else "metric"
 
 /**
- * Convert the user-facing weather unit string to a temperature suffix.
+ * Converts a user-facing weather unit label to a temperature suffix.
+ *
+ * @return "°F" for "Fahrenheit", otherwise "°C".
  */
 fun String.toTemperatureSuffix(): String =
     if (this == "Fahrenheit") "°F" else "°C"

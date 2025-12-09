@@ -9,8 +9,13 @@ import com.example.fredmobile.data.FirestoreRepository
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel that manages check-in / check-out state and
- * persists it to Firestore for the current authenticated user.
+ * Immutable UI state for the check-in feature.
+ *
+ * @param isLoading True while a network or database operation is in progress.
+ * @param isCheckedIn True if there is an active check-in for the user.
+ * @param activeCheckInId ID of the active check-in document, if any.
+ * @param statusText Human-readable status message shown in the UI.
+ * @param errorMessage Latest error message to display, or null if none.
  */
 data class CheckInUiState(
     val isLoading: Boolean = false,
@@ -20,18 +25,34 @@ data class CheckInUiState(
     val errorMessage: String? = null
 )
 
+/**
+ * ViewModel that manages check-in and check-out operations
+ * and exposes [CheckInUiState] to the UI.
+ *
+ * It uses [FirestoreRepository] to read and write check-in data
+ * for the currently authenticated user.
+ */
 class CheckInViewModel(
     private val repo: FirestoreRepository = FirestoreRepository()
 ) : ViewModel() {
 
+    /**
+     * Current UI state for the check-in screen.
+     */
     var uiState by mutableStateOf(CheckInUiState())
         private set
 
     init {
-        // On startup, see if there is an active IN_PROGRESS check-in
+        // On startup, attempt to restore the most recent check-in state.
         refreshFromFirestore()
     }
 
+    /**
+     * Reloads check-in history from Firestore and updates the UI state.
+     *
+     * If there is an active "IN_PROGRESS" check-in, it is restored.
+     * Otherwise, the last completed check-in is used to build a status message.
+     */
     fun refreshFromFirestore() {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, errorMessage = null)
@@ -40,22 +61,26 @@ class CheckInViewModel(
                 val active = all.lastOrNull { it.status == "IN_PROGRESS" }
                 val lastCompleted = all.lastOrNull { it.status == "COMPLETED" }
 
-                if (active != null) {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        isCheckedIn = true,
-                        activeCheckInId = active.id,
-                        statusText = "Checked in at ${active.siteName}."
-                    )
-                } else if (lastCompleted != null) {
-                    uiState = uiState.copy(
-                        isLoading = false,
-                        isCheckedIn = false,
-                        activeCheckInId = null,
-                        statusText = "Last check-in completed at ${lastCompleted.siteName}."
-                    )
-                } else {
-                    uiState = CheckInUiState() // default
+                uiState = when {
+                    active != null -> {
+                        uiState.copy(
+                            isLoading = false,
+                            isCheckedIn = true,
+                            activeCheckInId = active.id,
+                            statusText = "Checked in at ${active.siteName}."
+                        )
+                    }
+                    lastCompleted != null -> {
+                        uiState.copy(
+                            isLoading = false,
+                            isCheckedIn = false,
+                            activeCheckInId = null,
+                            statusText = "Last check-in completed at ${lastCompleted.siteName}."
+                        )
+                    }
+                    else -> {
+                        CheckInUiState()
+                    }
                 }
             } catch (e: Exception) {
                 uiState = uiState.copy(
@@ -66,6 +91,12 @@ class CheckInViewModel(
         }
     }
 
+    /**
+     * Creates a new check-in for the given site and updates the UI state.
+     *
+     * @param siteId Identifier of the site to check into.
+     * @param siteName Human-readable name of the site.
+     */
     fun checkIn(siteId: String, siteName: String) {
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, errorMessage = null)
@@ -86,8 +117,12 @@ class CheckInViewModel(
         }
     }
 
+    /**
+     * Completes the currently active check-in, if there is one.
+     */
     fun checkOut() {
         val activeId = uiState.activeCheckInId ?: return
+
         viewModelScope.launch {
             uiState = uiState.copy(isLoading = true, errorMessage = null)
             try {

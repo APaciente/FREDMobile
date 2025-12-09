@@ -1,7 +1,10 @@
 package com.example.fredmobile.util
 
 /**
- * Very simple mapping from OpenWeather-style descriptions to emojis.
+ * Maps a short weather description string to a representative emoji.
+ *
+ * @param description text such as "clear sky", "light rain", or "snow".
+ * @return an emoji matching the main condition, or a cloud if unknown.
  */
 fun mapWeatherDescriptionToEmoji(description: String?): String {
     val d = description?.lowercase() ?: return "☁️"

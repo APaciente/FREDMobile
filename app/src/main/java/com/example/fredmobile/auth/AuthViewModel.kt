@@ -6,39 +6,53 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
 /**
- * ViewModel that manages sign-in / sign-up / sign-out state.
+ * ViewModel that manages authentication state and operations.
  *
- * Milestone 3:
- *  - Email/password sign-in + registration
- *  - Google sign-in (via ID token)
- *  - Exposes a simple AuthUiState for the composable AuthScreen.
+ * It exposes [AuthUiState] to the UI and delegates all auth calls
+ * to [AuthRepository]. The composable screens interact with this
+ * ViewModel instead of talking to Firebase directly.
  */
 class AuthViewModel(
     private val repo: AuthRepository = AuthRepository()
 ) : ViewModel() {
 
+    /**
+     * Current authentication UI state.
+     */
     var uiState = mutableStateOf(AuthUiState())
         private set
 
     init {
-        // If a user is already signed in, expose them to the UI
+        // If a user is already signed in, expose them to the UI.
         uiState.value = uiState.value.copy(
             currentUser = repo.currentUser()
         )
     }
 
+    /**
+     * Updates the email field and clears any existing error message.
+     */
     fun onEmailChange(newEmail: String) {
         uiState.value = uiState.value.copy(email = newEmail, errorMessage = null)
     }
 
+    /**
+     * Updates the password field and clears any existing error message.
+     */
     fun onPasswordChange(newPassword: String) {
         uiState.value = uiState.value.copy(password = newPassword, errorMessage = null)
     }
 
+    /**
+     * Updates the display name field and clears any existing error message.
+     */
     fun onDisplayNameChange(newName: String) {
         uiState.value = uiState.value.copy(displayName = newName, errorMessage = null)
     }
 
+    /**
+     * Switches the screen into "register new account" mode.
+     */
     fun switchToRegisterMode() {
         uiState.value = uiState.value.copy(
             isRegistering = true,
@@ -46,6 +60,9 @@ class AuthViewModel(
         )
     }
 
+    /**
+     * Switches the screen into "sign in" mode.
+     */
     fun switchToSignInMode() {
         uiState.value = uiState.value.copy(
             isRegistering = false,
@@ -53,6 +70,9 @@ class AuthViewModel(
         )
     }
 
+    /**
+     * Attempts to sign in with the current email and password fields.
+     */
     fun signInWithEmail() {
         val email = uiState.value.email.trim()
         val password = uiState.value.password
@@ -82,6 +102,9 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Attempts to register a new account with the current form values.
+     */
     fun registerWithEmail() {
         val email = uiState.value.email.trim()
         val password = uiState.value.password
@@ -114,7 +137,8 @@ class AuthViewModel(
     }
 
     /**
-     * Called from the UI when Google Sign-In returns an ID token.
+     * Called when Google Sign-In returns an ID token.
+     * Uses the token to authenticate with Firebase.
      */
     fun handleGoogleIdToken(idToken: String) {
         uiState.value = uiState.value.copy(isLoading = true, errorMessage = null)
@@ -135,6 +159,9 @@ class AuthViewModel(
         }
     }
 
+    /**
+     * Sets an error message related to Google sign-in.
+     */
     fun setGoogleError(message: String) {
         uiState.value = uiState.value.copy(
             isLoading = false,
@@ -142,6 +169,9 @@ class AuthViewModel(
         )
     }
 
+    /**
+     * Signs the current user out and clears auth-related fields.
+     */
     fun signOut() {
         repo.signOut()
         uiState.value = uiState.value.copy(
